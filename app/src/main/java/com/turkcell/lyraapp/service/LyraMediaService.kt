@@ -3,9 +3,11 @@ package com.turkcell.lyraapp.service
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.media.MediaMetadata
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
+import android.os.Build
 import android.os.IBinder
 
 class LyraMediaService : Service() {
@@ -39,10 +41,16 @@ class LyraMediaService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForeground(
-            LyraNotificationHelper.NOTIFICATION_ID,
-            LyraNotificationHelper.build(this, mediaSession)
-        )
+        val notification = LyraNotificationHelper.build(this)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(
+                LyraNotificationHelper.NOTIFICATION_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+            )
+        } else {
+            startForeground(LyraNotificationHelper.NOTIFICATION_ID, notification)
+        }
         return START_STICKY
     }
 

@@ -21,6 +21,7 @@ import com.turkcell.lyraapp.ui.auth.register.RegisterRoute
 import com.turkcell.lyraapp.ui.home.HomeRoute
 import com.turkcell.lyraapp.ui.search.SearchRoute
 import com.turkcell.lyraapp.ui.favorites.FavoritesRoute
+import com.turkcell.lyraapp.ui.profile.ProfileRoute
 
 /**
  * Uygulamanın iskelet navigasyon yapısı.
@@ -93,7 +94,7 @@ fun LyraNavHost(
             composable(LyraDestination.Favorites.route) {
                 FavoritesRoute(onNavigateBack = { navController.popBackStack() })
             }
-            composable(LyraDestination.Profile.route) { PlaceholderScreen(title = "Profil") }
+            composable(LyraDestination.Profile.route) { ProfileRoute() }
         }
     }
 }

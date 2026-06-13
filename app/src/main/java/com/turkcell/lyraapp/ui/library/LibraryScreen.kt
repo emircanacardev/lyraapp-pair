@@ -39,6 +39,8 @@ import com.turkcell.lyraapp.ui.theme.LyraAppTheme
 
 @Composable
 fun LibraryRoute(
+    onOpenPlaylist: (String) -> Unit,
+    onCreatePlaylist: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
@@ -48,7 +50,8 @@ fun LibraryRoute(
         viewModel.effect.collect { effect ->
             when (effect) {
                 is LibraryEffect.NavigateToSearch -> Unit
-                is LibraryEffect.OpenPlaylist -> Unit
+                is LibraryEffect.NavigateToCreatePlaylist -> onCreatePlaylist()
+                is LibraryEffect.OpenPlaylist -> onOpenPlaylist(effect.id)
             }
         }
     }

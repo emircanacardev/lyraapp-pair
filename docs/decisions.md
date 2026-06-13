@@ -113,3 +113,41 @@
   `Check`, `Add`, `MoreVert`, `PushPin`, `SwapVert`, `GridView`.
 
 - Sebep: Bottom navigation bar'daki Kütüphane sekmesinin tasarım implementasyonu.
+
+
+### Playlist Detail ve Yeni Çalma Listesi Ekranları
+
+- Seçim: Tam MVI implementasyonu; her biri Contract + ViewModel + Route/Screen; backend bağlantısı yok.
+
+- Son Güncelleme Tarihi: 13.06.2026
+
+- Uygulama:
+  - `ui/library/detail/` — PlaylistDetail ekranı. `PlaylistDetailViewModel`, `SavedStateHandle["playlistId"]`
+    ile navigation argümanını alır; `staticDetail(playlistId)` fonksiyonu eşleşen playlist verisini döner.
+    Rota: `LyraDestination.PlaylistDetail("library/detail/{playlistId}")`; Compose Navigation `navArgument`
+    ile `NavType.StringType` olarak tanımlanır. `playlistDetailRoute(id)` yardımcı fonksiyonu navigate çağrısı
+    için rota string'ini üretir.
+  - `ui/library/create/` — CreatePlaylist ekranı. `isSaveEnabled` türetilmiş alan; yalnızca `name` boş
+    değilse `true`. Şarkı seçimi `Set<String>` üzerinden toggle edilir. `Switch` ile gizlilik ayarı.
+    `BasicTextField` + `HorizontalDivider` ile alt çizgili text alanları.
+  - `LibraryRoute`'a `onOpenPlaylist` ve `onCreatePlaylist` lambda'ları eklendi;
+    `LibraryEffect.NavigateToCreatePlaylist` effect'i de `LibraryContract`'a eklendi.
+  - `LyraIcons.kt`'ye 6 yeni ikon eklendi: `PlayArrow`, `Download`, `Shuffle`, `Edit`, `Public`, `Close`.
+
+- Sebep: Kütüphane ekranından playlist detayına ve yeni liste oluşturma akışına tasarım implementasyonu.
+
+
+### Beğenilen Şarkılar Varyantı — PlaylistDetail Ekranı
+
+- Karar: `PlaylistDetailUiState`'e `isLikedSongs: Boolean = false` alanı eklendi; header composable'ı
+  koşullu hale getirildi: `isLikedSongs = true` ise `LikedSongsHeader`, değilse mevcut `PlaylistHeader`.
+
+- Son Güncelleme Tarihi: 13.06.2026
+
+- Uygulama: `LikedSongsHeader` — 120dp sol hizalı thumbnail (pembe bg + kalp ikonu) + sağında başlık/meta.
+  `LikedSongsActionRow` — tam genişlik hap şeklinde "Çal" butonu (primary bg) + 48dp kare Shuffle +
+  Download icon button'ları (surfaceContainerHigh bg). Tüm şarkılar `isLiked = true`. Statik veri:
+  playlistId "1", coverColor 0xFFE91E8CL, 5 şarkı, `isLikedSongs = true`.
+
+- Sebep: Beğenilen Şarkılar özel bir sistem listesidir; farklı görsel hiyerarşi (küçük sol thumbnail +
+  geniş aksiyon butonu) gerektirdiğinden ayrı composable olarak modellendi.

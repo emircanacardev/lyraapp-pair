@@ -30,5 +30,6 @@ sealed interface LibraryIntent {
 
 sealed interface LibraryEffect {
     data object NavigateToSearch : LibraryEffect
+    data object NavigateToCreatePlaylist : LibraryEffect
     data class OpenPlaylist(val id: String) : LibraryEffect
 }

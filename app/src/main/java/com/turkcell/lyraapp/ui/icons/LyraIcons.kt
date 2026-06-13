@@ -181,6 +181,61 @@ object LyraIcons {
         )
     }
 
+    // ── Playlist Detail / Create Playlist ikonları ──
+
+    /** Oynat butonu (Material PlayArrow). */
+    val PlayArrow: ImageVector by lazy {
+        lyraIcon(
+            name = "PlayArrow",
+            pathData = "M8,5v14l11,-7z",
+        )
+    }
+
+    /** İndir (Material Download). */
+    val Download: ImageVector by lazy {
+        lyraIcon(
+            name = "Download",
+            pathData = "M19,9h-4V3H9v6H5l7,7 7,-7zM5,18v2h14v-2H5z",
+        )
+    }
+
+    /** Karıştır (Material Shuffle). */
+    val Shuffle: ImageVector by lazy {
+        lyraIcon(
+            name = "Shuffle",
+            pathData = "M10.59,9.17L5.41,4 4,5.41l5.17,5.17 1.42,-1.41zM14.5,4l2.04,2.04L4,18.59 5.41,20 " +
+                "17.96,7.46 20,9.5V4h-5.5zM14.83,13.41l-1.41,1.41 3.13,3.13L14.5,20H20v-5.5l-2.04,2.04 -3.13,-3.13z",
+        )
+    }
+
+    /** Düzenle / kalem (Material Edit). */
+    val Edit: ImageVector by lazy {
+        lyraIcon(
+            name = "Edit",
+            pathData = "M3,17.25V21h3.75L17.81,9.94l-3.75,-3.75L3,17.25zM20.71,7.04c0.39,-0.39 0.39,-1.02 " +
+                "0,-1.41l-2.34,-2.34c-0.39,-0.39 -1.02,-0.39 -1.41,0l-1.83,1.83 3.75,3.75 1.83,-1.83z",
+        )
+    }
+
+    /** Herkese açık / küre (Material Public). */
+    val Public: ImageVector by lazy {
+        lyraIcon(
+            name = "Public",
+            pathData = "M12,2C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2zM11,19.93c-3.95," +
+                "-0.49 -7,-3.85 -7,-7.93 0,-0.62 0.08,-1.21 0.21,-1.79L9,15v1c0,1.1 0.9,2 2,2v1.93zM17.9," +
+                "17.39c-0.26,-0.81 -1,-1.39 -1.9,-1.39h-1v-3c0,-0.55 -0.45,-1 -1,-1H8v-2h2c0.55,0 1,-0.45 " +
+                "1,-1V7h2c1.1,0 2,-0.9 2,-2v-0.41c2.93,1.19 5,4.06 5,7.41 0,2.08 -0.8,3.97 -2.1,5.39z",
+        )
+    }
+
+    /** Kapat / çarpı (Material Close). */
+    val Close: ImageVector by lazy {
+        lyraIcon(
+            name = "Close",
+            pathData = "M19,6.41L17.59,5 12,10.59 6.41,5 5,6.41 10.59,12 5,17.59 6.41,19 12,13.41 17.59,19 19,17.59 13.41,12z",
+        )
+    }
+
     // ── Kütüphane ekranı ikonları ──
 
     /** Onay işareti; FilterChip seçili durumu (Material Check / Done). */

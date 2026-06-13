@@ -16,10 +16,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import com.turkcell.lyraapp.ui.auth.login.LoginRoute
 import com.turkcell.lyraapp.ui.auth.register.RegisterRoute
 import com.turkcell.lyraapp.ui.home.HomeRoute
 import com.turkcell.lyraapp.ui.library.LibraryRoute
+import com.turkcell.lyraapp.ui.library.create.CreatePlaylistRoute
+import com.turkcell.lyraapp.ui.library.detail.PlaylistDetailRoute
 import com.turkcell.lyraapp.ui.search.SearchRoute
 import com.turkcell.lyraapp.ui.favorites.FavoritesRoute
 import com.turkcell.lyraapp.ui.profile.ProfileRoute
@@ -91,11 +95,25 @@ fun LyraNavHost(
 
             composable(LyraDestination.Home.route) { HomeRoute() }
             composable(LyraDestination.Search.route) { SearchRoute() }
-            composable(LyraDestination.Library.route) { LibraryRoute() }
+            composable(LyraDestination.Library.route) {
+                LibraryRoute(
+                    onOpenPlaylist = { id -> navController.navigate(playlistDetailRoute(id)) },
+                    onCreatePlaylist = { navController.navigate(LyraDestination.CreatePlaylist.route) },
+                )
+            }
             composable(LyraDestination.Favorites.route) {
                 FavoritesRoute(onNavigateBack = { navController.popBackStack() })
             }
             composable(LyraDestination.Profile.route) { ProfileRoute() }
+            composable(
+                route = LyraDestination.PlaylistDetail.route,
+                arguments = listOf(navArgument("playlistId") { type = NavType.StringType }),
+            ) {
+                PlaylistDetailRoute(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(LyraDestination.CreatePlaylist.route) {
+                CreatePlaylistRoute(onNavigateBack = { navController.popBackStack() })
+            }
         }
     }
 }

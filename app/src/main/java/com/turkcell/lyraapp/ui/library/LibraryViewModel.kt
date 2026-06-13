@@ -28,7 +28,7 @@ class LibraryViewModel @Inject constructor() : ViewModel() {
             is LibraryIntent.PlaylistClicked -> viewModelScope.launch { _effect.send(LibraryEffect.OpenPlaylist(intent.id)) }
             is LibraryIntent.MoreClicked -> Unit
             is LibraryIntent.SearchClicked -> viewModelScope.launch { _effect.send(LibraryEffect.NavigateToSearch) }
-            is LibraryIntent.AddClicked -> Unit
+            is LibraryIntent.AddClicked -> viewModelScope.launch { _effect.send(LibraryEffect.NavigateToCreatePlaylist) }
         }
     }
 }

@@ -24,8 +24,20 @@ sealed interface HomeIntent {
     /** Besleme yüklemesi başarısız olduğunda kullanıcı yeniden dener. */
     data object Retry : HomeIntent
     data object ToggleTheme : HomeIntent
+    data class TrackClicked(
+        val title: String,
+        val subtitle: String,
+        val startColor: Long,
+        val endColor: Long
+    ) : HomeIntent
 }
 
 sealed interface HomeEffect {
     data class ShowError(val message: String) : HomeEffect
+    data class NavigateToPlayer(
+        val title: String,
+        val subtitle: String,
+        val startColor: Long,
+        val endColor: Long
+    ) : HomeEffect
 }

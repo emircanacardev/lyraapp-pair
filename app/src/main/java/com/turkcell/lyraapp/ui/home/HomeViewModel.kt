@@ -44,6 +44,18 @@ class HomeViewModel @Inject constructor(
         when (intent) {
             is HomeIntent.Retry -> loadFeed()
             is HomeIntent.ToggleTheme -> toggleTheme()
+            is HomeIntent.TrackClicked -> {
+                viewModelScope.launch {
+                    _effect.send(
+                        HomeEffect.NavigateToPlayer(
+                            title = intent.title,
+                            subtitle = intent.subtitle,
+                            startColor = intent.startColor,
+                            endColor = intent.endColor
+                        )
+                    )
+                }
+            }
         }
     }
 

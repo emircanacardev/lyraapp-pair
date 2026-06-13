@@ -21,8 +21,11 @@ import com.turkcell.lyraapp.ui.auth.register.RegisterRoute
 import com.turkcell.lyraapp.ui.home.HomeRoute
 import com.turkcell.lyraapp.ui.library.LibraryRoute
 import com.turkcell.lyraapp.ui.search.SearchRoute
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import com.turkcell.lyraapp.ui.favorites.FavoritesRoute
 import com.turkcell.lyraapp.ui.profile.ProfileRoute
+import com.turkcell.lyraapp.ui.player.PlayerRoute
 
 /**
  * Uygulamanın iskelet navigasyon yapısı.
@@ -89,13 +92,31 @@ fun LyraNavHost(
                 )
             }
 
-            composable(LyraDestination.Home.route) { HomeRoute() }
+            composable(LyraDestination.Home.route) {
+                HomeRoute(
+                    onNavigateToPlayer = { title, subtitle, startColor, endColor ->
+                        navController.navigate("player?title=$title&subtitle=$subtitle&startColor=$startColor&endColor=$endColor")
+                    }
+                )
+            }
             composable(LyraDestination.Search.route) { SearchRoute() }
             composable(LyraDestination.Library.route) { LibraryRoute() }
             composable(LyraDestination.Favorites.route) {
                 FavoritesRoute(onNavigateBack = { navController.popBackStack() })
             }
             composable(LyraDestination.Profile.route) { ProfileRoute() }
+
+            composable(
+                route = LyraDestination.Player.route,
+                arguments = listOf(
+                    navArgument("title") { type = NavType.StringType; nullable = true },
+                    navArgument("subtitle") { type = NavType.StringType; nullable = true },
+                    navArgument("startColor") { type = NavType.LongType; defaultValue = 0xFF8B6FB8L },
+                    navArgument("endColor") { type = NavType.LongType; defaultValue = 0xFF4A3D6BL }
+                )
+            ) {
+                PlayerRoute(onNavigateBack = { navController.popBackStack() })
+            }
         }
     }
 }

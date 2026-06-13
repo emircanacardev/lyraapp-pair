@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -43,6 +44,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.PathParser
+import androidx.compose.ui.graphics.SolidColor
+
 import com.turkcell.lyraapp.data.home.PlaylistForYou
 import com.turkcell.lyraapp.data.home.QuickPick
 import com.turkcell.lyraapp.data.home.RecentlyPlayed
@@ -124,7 +129,14 @@ fun HomeScreen(
                     .statusBarsPadding(),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                item { HomeHeader(greeting = state.greeting, userInitials = state.userInitials) }
+                item {
+                    HomeHeader(
+                        greeting = state.greeting,
+                        userInitials = state.userInitials,
+                        isDarkTheme = state.isDarkTheme,
+                        onThemeToggle = { onIntent(HomeIntent.ToggleTheme) }
+                    )
+                }
                 item { QuickPickGrid(quickPicks = state.quickPicks) }
                 item { SectionHeader(title = "Son çalınanlar", trailingText = "Tümü") }
                 item { RecentlyPlayedRow(items = state.recentlyPlayed) }
@@ -140,6 +152,8 @@ fun HomeScreen(
 private fun HomeHeader(
     greeting: String,
     userInitials: String,
+    isDarkTheme: Boolean,
+    onThemeToggle: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -161,13 +175,15 @@ private fun HomeHeader(
                 color = MaterialTheme.colorScheme.onSurface,
             )
         }
-        Icon(
-            imageVector = LyraIcons.LightMode,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(24.dp),
-        )
-        Spacer(Modifier.width(16.dp))
+        IconButton(onClick = onThemeToggle) {
+            Icon(
+                imageVector = if (isDarkTheme) LyraIcons.LightMode else HomeIcons.Moon,
+                contentDescription = "Temayı Değiştir",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(24.dp),
+            )
+        }
+        Spacer(Modifier.width(8.dp))
         UserAvatar(initials = userInitials)
     }
 }
@@ -400,3 +416,21 @@ private fun HomeScreenLightPreview() {
         HomeScreen(state = previewState, onIntent = {})
     }
 }
+
+private object HomeIcons {
+    val Moon: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "Moon",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).addPath(
+            pathData = PathParser().parsePathString(
+                "M12.3 22c5.36 0 9.7-4.34 9.7-9.7 0-3.32-1.67-6.26-4.22-8.02-.38-.26-.9-.1-.97.35-.37 2.4-2.18 4.38-4.63 4.9-2.42.5-4.47-.9-5.18-3.05-.15-.46-.7-.6-.92-.2C3.76 8.07 2 11.23 2 14.7 2 18.73 5.27 22 9.3 22c1 0 1.98-.2 2.87-.6.28-.13.25-.56.13-.6-.12-.04-.25-.06-.37-.06-.11 0-.21.01-.31.02-.15.01-.3.04-.46.04-.08 0-.16 0-.24 0z"
+            ).toNodes(),
+            fill = SolidColor(Color.Black),
+        ).build()
+    }
+}
+

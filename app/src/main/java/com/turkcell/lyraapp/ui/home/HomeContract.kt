@@ -17,11 +17,13 @@ data class HomeUiState(
     val quickPicks: List<QuickPick> = emptyList(),
     val recentlyPlayed: List<RecentlyPlayed> = emptyList(),
     val playlistsForYou: List<PlaylistForYou> = emptyList(),
+    val isDarkTheme: Boolean = false,
 )
 
 sealed interface HomeIntent {
     /** Besleme yüklemesi başarısız olduğunda kullanıcı yeniden dener. */
     data object Retry : HomeIntent
+    data object ToggleTheme : HomeIntent
 }
 
 sealed interface HomeEffect {

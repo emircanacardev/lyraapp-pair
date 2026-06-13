@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.turkcell.lyraapp.data.theme.ThemePreferencesRepository
 import java.util.Calendar
 import javax.inject.Inject
 
@@ -25,6 +26,7 @@ import javax.inject.Inject
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val homeRepository: HomeRepository,
+    private val themePreferencesRepository: ThemePreferencesRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState(greeting = greetingForNow()))
@@ -35,11 +37,27 @@ class HomeViewModel @Inject constructor(
 
     init {
         loadFeed()
+        observeTheme()
     }
 
     fun onIntent(intent: HomeIntent) {
         when (intent) {
             is HomeIntent.Retry -> loadFeed()
+            is HomeIntent.ToggleTheme -> toggleTheme()
+        }
+    }
+
+    private fun observeTheme() {
+        viewModelScope.launch {
+            themePreferencesRepository.isDarkTheme.collect { isDark ->
+                _uiState.update { it.copy(isDarkTheme = isDark ?: false) }
+            }
+        }
+    }
+
+    private fun toggleTheme() {
+        viewModelScope.launch {
+            themePreferencesRepository.setDarkTheme(!_uiState.value.isDarkTheme)
         }
     }
 

@@ -95,3 +95,21 @@
 
 - Sebep: Backend REST API sözleşmesi tanımlı değil (`agents.md` §2.2 uydurmak yasak). Gerçek API
   geldiğinde yalnızca implementasyon ve DI bağlaması değişir; ViewModel/Contract etkilenmez.
+
+
+### Kütüphane Ekranı
+
+- Seçim: Tam MVI implementasyonu (Contract + ViewModel + Route/Screen); backend bağlantısı yok.
+
+- Son Güncelleme Tarihi: 13.06.2026
+
+- Uygulama: `ui/library/` — `LibraryContract.kt`, `LibraryViewModel.kt`, `LibraryScreen.kt`.
+  Static playlist listesi ViewModel içinde private fonksiyon (`staticPlaylists()`) olarak tutulur;
+  bu ekran UI-only gereksinim olduğundan stub repository eklenmedi. Filtre seçimi (`LibraryFilter`)
+  `LibraryUiState` içinde tutulur; `LibraryIntent.FilterSelected` ile güncellenir. Thumbnail rengi
+  `PlaylistItem.thumbnailColor: Long` (ARGB hex) alanında saklanır, composable katmanında
+  `Color(long)` ile dönüştürülür. `LyraNavHost.kt` içindeki `PlaceholderScreen("Kütüphane")`
+  kaldırılarak `LibraryRoute()` ile değiştirildi. `LyraIcons.kt`'ye 6 yeni ikon eklendi:
+  `Check`, `Add`, `MoreVert`, `PushPin`, `SwapVert`, `GridView`.
+
+- Sebep: Bottom navigation bar'daki Kütüphane sekmesinin tasarım implementasyonu.

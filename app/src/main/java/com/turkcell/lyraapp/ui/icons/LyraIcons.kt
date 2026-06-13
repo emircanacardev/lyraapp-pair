@@ -180,6 +180,60 @@ object LyraIcons {
                 "-8,4v3h16v-3c0,-2.66 -5.33,-4 -8,-4z",
         )
     }
+
+    // ── Kütüphane ekranı ikonları ──
+
+    /** Onay işareti; FilterChip seçili durumu (Material Check / Done). */
+    val Check: ImageVector by lazy {
+        lyraIcon(
+            name = "Check",
+            pathData = "M9,16.17L4.83,12l-1.42,1.41L9,19 21,7l-1.41,-1.41z",
+        )
+    }
+
+    /** Ekleme butonu (Material Add). */
+    val Add: ImageVector by lazy {
+        lyraIcon(
+            name = "Add",
+            pathData = "M19,13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z",
+        )
+    }
+
+    /** Üç dikey nokta; liste öğesi bağlam menüsü (Material MoreVert). */
+    val MoreVert: ImageVector by lazy {
+        lyraIcon(
+            name = "MoreVert",
+            pathData = "M12,8c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM12,10c-1.1,0 " +
+                "-2,0.9 -2,2s0.9,2 2,2 2,-0.9 2,-2 -0.9,-2 -2,-2zM12,16c-1.1,0 -2,0.9 -2,2s0.9,2 " +
+                "2,2 2,-0.9 2,-2 -0.9,-2 -2,-2z",
+        )
+    }
+
+    /** Raptiye; sabitlenmiş liste öğesi göstergesi (Material PushPin, filled). */
+    val PushPin: ImageVector by lazy {
+        lyraIcon(
+            name = "PushPin",
+            pathData = "M16,9V4h1c0.55,0 1,-0.45 1,-1v0c0,-0.55 -0.45,-1 -1,-1H7c-0.55,0 -1,0.45 -1,1v0" +
+                "c0,0.55 0.45,1 1,1h1v5c0,1.66 -1.34,3 -3,3v2h5.97v7l1,1 1,-1v-7H19v-2c-1.66,0 -3,-1.34 -3,-3z",
+        )
+    }
+
+    /** Yukarı-aşağı sıralama oku; sıralama satırı (Material SwapVert). */
+    val SwapVert: ImageVector by lazy {
+        lyraIcon(
+            name = "SwapVert",
+            pathData = "M16,17.01V10h-2v7.01h-3L15,21l4,-3.99h-3zM9,3L5,6.99h3V14h2V6.99h3L9,3z",
+        )
+    }
+
+    /** Izgara görünümü; liste/ızgara geçiş butonu (Material GridView). */
+    val GridView: ImageVector by lazy {
+        lyraIcon(
+            name = "GridView",
+            pathData = "M3,3v8h8V3H3zM9,9H5V5h4V9zM3,13v8h8v-8H3zM9,19H5v-4h4V19z" +
+                "M13,3v8h8V3H13zM19,9h-4V5h4V9zM13,13v8h8v-8H13zM19,19h-4v-4h4V19z",
+        )
+    }
 }
 
 /**

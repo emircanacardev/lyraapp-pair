@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.turkcell.lyraapp.data.player.PlaybackManager
 
 /**
  * Now Playing (Çalar) ekranının MVI ViewModel sınıfı.
@@ -23,6 +24,7 @@ import javax.inject.Inject
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
+    private val playbackManager: PlaybackManager,
 ) : ViewModel() {
 
     private val title: String = savedStateHandle["title"] ?: "Bilinmeyen Şarkı"
@@ -43,13 +45,47 @@ class PlayerViewModel @Inject constructor(
     private val _effect = Channel<PlayerEffect>(Channel.BUFFERED)
     val effect: Flow<PlayerEffect> = _effect.receiveAsFlow()
 
+    init {
+        // Eğer merkezi çalma durumu boşsa veya gelen argümanlar farklıysa durumu güncelle/başlat
+        val currentTrack = playbackManager.playingTrack.value
+        if (currentTrack == null || currentTrack.title != title || currentTrack.subtitle != subtitle) {
+            playbackManager.playTrack(
+                title = title,
+                subtitle = subtitle,
+                startColor = startColor,
+                endColor = endColor
+            )
+        }
+
+        // Merkezi çalma durumunu uiState'e bağla
+        viewModelScope.launch {
+            playbackManager.playingTrack.collect { track ->
+                if (track != null) {
+                    _uiState.update { current ->
+                        current.copy(
+                            title = track.title,
+                            subtitle = track.subtitle,
+                            startColor = track.startColor,
+                            endColor = track.endColor,
+                            isPlaying = track.isPlaying,
+                            isFavorite = track.isFavorite,
+                            progress = track.progress,
+                            currentTime = track.currentTime,
+                            duration = track.duration
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     fun onIntent(intent: PlayerIntent) {
         when (intent) {
             is PlayerIntent.TogglePlayPause -> {
-                _uiState.update { it.copy(isPlaying = !it.isPlaying) }
+                playbackManager.togglePlayPause()
             }
             is PlayerIntent.ToggleFavorite -> {
-                _uiState.update { it.copy(isFavorite = !it.isFavorite) }
+                playbackManager.toggleFavorite()
             }
             is PlayerIntent.ToggleShuffle -> {
                 _uiState.update { it.copy(isShuffleEnabled = !it.isShuffleEnabled) }
@@ -58,18 +94,7 @@ class PlayerViewModel @Inject constructor(
                 _uiState.update { it.copy(isRepeatEnabled = !it.isRepeatEnabled) }
             }
             is PlayerIntent.ProgressChanged -> {
-                _uiState.update { current ->
-                    // Yeni süreyi hesapla (örnek: 3:43 -> 223 saniye üzerinden)
-                    val totalSeconds = 223
-                    val currentSeconds = (totalSeconds * intent.value).toInt()
-                    val minutes = currentSeconds / 60
-                    val seconds = currentSeconds % 60
-                    val timeString = String.format("%d:%02d", minutes, seconds)
-                    current.copy(
-                        progress = intent.value,
-                        currentTime = timeString
-                    )
-                }
+                playbackManager.setProgress(intent.value)
             }
             is PlayerIntent.NavigateBack -> {
                 viewModelScope.launch {
@@ -77,10 +102,10 @@ class PlayerViewModel @Inject constructor(
                 }
             }
             is PlayerIntent.SkipNext -> {
-                // Mock davranış: Şarkı durumunu veya bilgisini değiştirebiliriz.
+                playbackManager.skipNext()
             }
             is PlayerIntent.SkipPrevious -> {
-                // Mock davranış.
+                playbackManager.skipPrevious()
             }
         }
     }

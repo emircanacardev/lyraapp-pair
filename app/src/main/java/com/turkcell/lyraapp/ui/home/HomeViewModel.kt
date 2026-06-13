@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.turkcell.lyraapp.data.player.PlaybackManager
 import com.turkcell.lyraapp.data.theme.ThemePreferencesRepository
 import java.util.Calendar
 import javax.inject.Inject
@@ -27,6 +28,7 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     private val homeRepository: HomeRepository,
     private val themePreferencesRepository: ThemePreferencesRepository,
+    private val playbackManager: PlaybackManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState(greeting = greetingForNow()))
@@ -45,6 +47,12 @@ class HomeViewModel @Inject constructor(
             is HomeIntent.Retry -> loadFeed()
             is HomeIntent.ToggleTheme -> toggleTheme()
             is HomeIntent.TrackClicked -> {
+                playbackManager.playTrack(
+                    title = intent.title,
+                    subtitle = intent.subtitle,
+                    startColor = intent.startColor,
+                    endColor = intent.endColor
+                )
                 viewModelScope.launch {
                     _effect.send(
                         HomeEffect.NavigateToPlayer(

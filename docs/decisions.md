@@ -151,3 +151,29 @@
 
 - Sebep: Beğenilen Şarkılar özel bir sistem listesidir; farklı görsel hiyerarşi (küçük sol thumbnail +
   geniş aksiyon butonu) gerektirdiğinden ayrı composable olarak modellendi.
+
+
+### Bildirim Paneli Medya Mini Player
+
+- Karar: `Service` + `Notification.MediaStyle` + `MediaSession` — MVI dışı bileşen.
+
+- Son Güncelleme Tarihi: 13.06.2026
+
+- Uygulama:
+  - `service/LyraMediaService.kt` — `Service` subclass; `onCreate`'de `MediaSession` oluşturur
+    (sahte metadata: "Neon Sokaklar / Şehir Işıkları / Gece Vardiyası"), `onStartCommand`'da
+    `startForeground()` çağırır.
+  - `service/LyraNotificationHelper.kt` — `NotificationChannel` oluşturma + `Notification.MediaStyle`
+    nesnesi; sahte albüm kapağı (`LinearGradient` bitmap) ve 4 aksiyon butonu (Beğen, Önceki,
+    Duraklat, Sonraki) içerir. Aksiyon `PendingIntent`'leri `NOOP` broadcast'e bağlıdır.
+  - `AndroidManifest.xml`'e `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`,
+    `POST_NOTIFICATIONS` izinleri ve `mediaPlayback` tipinde service kaydı eklendi.
+  - `PlayerScreen.kt` — "Arkaplan" Row'u `onBackgroundClicked` lambdası ile tıklanabilir hale
+    getirildi; `PlayerRoute` içinde `LocalContext` üzerinden `LyraMediaService.start()` tetiklenir.
+
+- MVI kapsamı: `LyraMediaService` bir `Service`'dir, sunum katmanı değildir; MVI
+  State/Intent/Effect sözleşmesi dışındadır. Bu, `agents.md §2.4`'ün bilinçli bir istisnasıdır.
+
+- Sebep: Android bildirim panelinde medya kontrolü göstermek için sistem `Notification.MediaStyle`
+  API'si zorunludur; arka plan ses servisi olmadan modern gradient görünümü (Android 12+)
+  `MediaSession` aktif token'ı gerektirir. Backend yoktur, tüm veri statiktir.

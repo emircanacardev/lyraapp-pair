@@ -2,6 +2,7 @@ package com.turkcell.lyraapp.ui.player
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,11 +43,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.turkcell.lyraapp.service.LyraMediaService
 import com.turkcell.lyraapp.ui.theme.LyraAppTheme
 
 /**
@@ -59,6 +62,7 @@ fun PlayerRoute(
     viewModel: PlayerViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         viewModel.effect.collect { effect ->
@@ -71,6 +75,7 @@ fun PlayerRoute(
     PlayerScreen(
         state = uiState,
         onIntent = viewModel::onIntent,
+        onBackgroundClicked = { LyraMediaService.start(context) },
         modifier = modifier,
     )
 }
@@ -82,6 +87,7 @@ fun PlayerRoute(
 fun PlayerScreen(
     state: PlayerUiState,
     onIntent: (PlayerIntent) -> Unit,
+    onBackgroundClicked: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     // Kapaktan beslenen dikey gradyan arka plan: startColor -> startColor (yarı opak) -> Black
@@ -344,7 +350,8 @@ fun PlayerScreen(
                     // Orta: Arkaplan (Alarm/Bildirim ve Yazı)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.clickable { onBackgroundClicked() }
                     ) {
                         Icon(
                             imageVector = PlayerIcons.BackgroundBell,

@@ -16,6 +16,7 @@ enum class LyraDestination(val route: String) {
     Profile("profile"),
     PlaylistDetail("library/detail/{playlistId}"),
     CreatePlaylist("library/create"),
+    Player("player?title={title}&subtitle={subtitle}&startColor={startColor}&endColor={endColor}"),
 }
 
 fun playlistDetailRoute(playlistId: String) = "library/detail/$playlistId"

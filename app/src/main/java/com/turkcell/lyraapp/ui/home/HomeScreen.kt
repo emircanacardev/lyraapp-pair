@@ -1,6 +1,7 @@
 package com.turkcell.lyraapp.ui.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -64,6 +65,7 @@ import com.turkcell.lyraapp.ui.theme.LyraAppTheme
  */
 @Composable
 fun HomeRoute(
+    onNavigateToPlayer: (title: String, subtitle: String, startColor: Long, endColor: Long) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
@@ -81,6 +83,14 @@ fun HomeRoute(
                     if (result == SnackbarResult.ActionPerformed) {
                         viewModel.onIntent(HomeIntent.Retry)
                     }
+                }
+                is HomeEffect.NavigateToPlayer -> {
+                    onNavigateToPlayer(
+                        effect.title,
+                        effect.subtitle,
+                        effect.startColor,
+                        effect.endColor
+                    )
                 }
             }
         }
@@ -139,11 +149,11 @@ fun HomeScreen(
                         onThemeToggle = { onIntent(HomeIntent.ToggleTheme) }
                     )
                 }
-                item { QuickPickGrid(quickPicks = state.quickPicks) }
+                item { QuickPickGrid(quickPicks = state.quickPicks, onIntent = onIntent) }
                 item { SectionHeader(title = "Son çalınanlar", trailingText = "Tümü") }
-                item { RecentlyPlayedRow(items = state.recentlyPlayed) }
+                item { RecentlyPlayedRow(items = state.recentlyPlayed, onIntent = onIntent) }
                 item { SectionHeader(title = "Senin için çalma listeleri") }
-                item { PlaylistsForYouRow(items = state.playlistsForYou) }
+                item { PlaylistsForYouRow(items = state.playlistsForYou, onIntent = onIntent) }
             }
         }
     }
@@ -210,7 +220,10 @@ private fun UserAvatar(initials: String) {
 
 /** Hızlı seçimlerin 2 sütunlu sabit grid'i (6 öğe; dikey scroll LazyColumn'a aittir). */
 @Composable
-private fun QuickPickGrid(quickPicks: List<QuickPick>) {
+private fun QuickPickGrid(
+    quickPicks: List<QuickPick>,
+    onIntent: (HomeIntent) -> Unit,
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -220,7 +233,11 @@ private fun QuickPickGrid(quickPicks: List<QuickPick>) {
         quickPicks.chunked(2).forEach { rowItems ->
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 rowItems.forEach { item ->
-                    QuickPickCard(item = item, modifier = Modifier.weight(1f))
+                    QuickPickCard(
+                        item = item,
+                        onIntent = onIntent,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
                 if (rowItems.size == 1) {
                     Spacer(Modifier.weight(1f))
@@ -233,13 +250,24 @@ private fun QuickPickGrid(quickPicks: List<QuickPick>) {
 @Composable
 private fun QuickPickCard(
     item: QuickPick,
+    onIntent: (HomeIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier
             .height(56.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .clickable {
+                onIntent(
+                    HomeIntent.TrackClicked(
+                        title = item.title,
+                        subtitle = "Hızlı Seçim",
+                        startColor = item.artworkStartColor,
+                        endColor = item.artworkEndColor
+                    )
+                )
+            },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Artwork(
@@ -293,13 +321,29 @@ private fun SectionHeader(
 
 /** "Son çalınanlar" yatay scrollable kart listesi. */
 @Composable
-private fun RecentlyPlayedRow(items: List<RecentlyPlayed>) {
+private fun RecentlyPlayedRow(
+    items: List<RecentlyPlayed>,
+    onIntent: (HomeIntent) -> Unit,
+) {
     LazyRow(
         contentPadding = PaddingValues(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         items(items, key = { it.id }) { item ->
-            Column(modifier = Modifier.width(150.dp)) {
+            Column(
+                modifier = Modifier
+                    .width(150.dp)
+                    .clickable {
+                        onIntent(
+                            HomeIntent.TrackClicked(
+                                title = item.title,
+                                subtitle = item.subtitle,
+                                startColor = item.artworkStartColor,
+                                endColor = item.artworkEndColor
+                            )
+                        )
+                    }
+            ) {
                 Artwork(
                     startColor = item.artworkStartColor,
                     endColor = item.artworkEndColor,
@@ -330,13 +374,29 @@ private fun RecentlyPlayedRow(items: List<RecentlyPlayed>) {
 
 /** "Senin için çalma listeleri" yatay scrollable büyük kart listesi. */
 @Composable
-private fun PlaylistsForYouRow(items: List<PlaylistForYou>) {
+private fun PlaylistsForYouRow(
+    items: List<PlaylistForYou>,
+    onIntent: (HomeIntent) -> Unit,
+) {
     LazyRow(
         contentPadding = PaddingValues(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         items(items, key = { it.id }) { item ->
-            Column(modifier = Modifier.width(170.dp)) {
+            Column(
+                modifier = Modifier
+                    .width(170.dp)
+                    .clickable {
+                        onIntent(
+                            HomeIntent.TrackClicked(
+                                title = item.title,
+                                subtitle = "Çalma Listesi",
+                                startColor = item.artworkStartColor,
+                                endColor = item.artworkEndColor
+                            )
+                        )
+                    }
+            ) {
                 Artwork(
                     startColor = item.artworkStartColor,
                     endColor = item.artworkEndColor,

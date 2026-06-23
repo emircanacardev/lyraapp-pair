@@ -91,7 +91,12 @@ class LoginViewModel @Inject constructor(
                         }
                     }
                     .onFailure { error ->
-                        _effect.send(LoginEffect.ShowError(error.message ?: "Doğrulama başarısız."))
+                        val errorMessage = if (error is retrofit2.HttpException && error.code() == 401) {
+                            "SMS kodu yanlış."
+                        } else {
+                            error.message ?: "Doğrulama başarısız."
+                        }
+                        _effect.send(LoginEffect.ShowError(errorMessage))
                     }
             }
         }

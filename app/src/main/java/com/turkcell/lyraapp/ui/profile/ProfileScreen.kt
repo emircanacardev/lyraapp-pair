@@ -57,6 +57,7 @@ import com.turkcell.lyraapp.ui.theme.LyraAppTheme
  */
 @Composable
 fun ProfileRoute(
+    onNavigateToLogin: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
@@ -68,6 +69,9 @@ fun ProfileRoute(
             when (effect) {
                 is ProfileEffect.ShowSettingsMessage -> {
                     snackbarHostState.showSnackbar("Bu ayar henüz değiştirilemez.")
+                }
+                is ProfileEffect.NavigateToLogin -> {
+                    onNavigateToLogin()
                 }
             }
         }
@@ -258,6 +262,14 @@ fun ProfileScreen(
                             title = "Yardım ve destek",
                             onClick = { onIntent(ProfileIntent.SettingItemClicked("Yardım ve destek")) }
                         )
+                        SettingRow(
+                            icon = ProfileIcons.Logout,
+                            title = "Çıkış yap",
+                            textColor = MaterialTheme.colorScheme.error,
+                            iconColor = MaterialTheme.colorScheme.error,
+                            showChevron = false,
+                            onClick = { onIntent(ProfileIntent.LogoutClicked) }
+                        )
                     }
                 }
             }
@@ -381,6 +393,9 @@ private fun SettingRow(
     icon: ImageVector,
     title: String,
     value: String? = null,
+    textColor: Color = MaterialTheme.colorScheme.onSurface,
+    iconColor: Color = MaterialTheme.colorScheme.onSurface,
+    showChevron: Boolean = true,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -399,14 +414,14 @@ private fun SettingRow(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurface,
+                tint = iconColor,
                 modifier = Modifier.size(24.dp)
             )
             Spacer(Modifier.width(16.dp))
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface
+                color = textColor
             )
         }
 
@@ -421,12 +436,14 @@ private fun SettingRow(
                     modifier = Modifier.padding(horizontal = 8.dp)
                 )
             }
-            Icon(
-                imageVector = ProfileIcons.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp)
-            )
+            if (showChevron) {
+                Icon(
+                    imageVector = ProfileIcons.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
     }
 }
@@ -495,6 +512,13 @@ private object ProfileIcons {
         lyraIcon(
             "ChevronRight",
             "M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"
+        )
+    }
+
+    val Logout: ImageVector by lazy {
+        lyraIcon(
+            "Logout",
+            "M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"
         )
     }
 

@@ -173,7 +173,16 @@ fun LyraNavHost(
             composable(LyraDestination.Favorites.route) {
                 FavoritesRoute(onNavigateBack = { navController.popBackStack() })
             }
-            composable(LyraDestination.Profile.route) { ProfileRoute() }
+            composable(LyraDestination.Profile.route) {
+                ProfileRoute(
+                    onNavigateToLogin = {
+                        navController.navigate(LyraDestination.Login.route) {
+                            popUpTo(0) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            }
             composable(
                 route = LyraDestination.PlaylistDetail.route,
                 arguments = listOf(navArgument("playlistId") { type = NavType.StringType }),

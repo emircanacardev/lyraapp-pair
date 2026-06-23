@@ -19,8 +19,10 @@ sealed interface ProfileIntent {
     data class ThemeChanged(val isDark: Boolean) : ProfileIntent
     data object SettingsClicked : ProfileIntent
     data class SettingItemClicked(val title: String) : ProfileIntent
+    data object LogoutClicked : ProfileIntent
 }
 
 sealed interface ProfileEffect {
     data object ShowSettingsMessage : ProfileEffect
+    data object NavigateToLogin : ProfileEffect
 }

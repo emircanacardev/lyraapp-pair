@@ -16,9 +16,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/**
- * Profil ekranının MVI ViewModel sınıfı.
- */
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val themePreferencesRepository: ThemePreferencesRepository,
@@ -96,7 +93,7 @@ class ProfileViewModel @Inject constructor(
                         handle = if (handle.length > 1) handle else "@kullanici"
                     )
                 }
-            }.onFailure { error ->
+            }.onFailure {
                 _uiState.update { current ->
                     current.copy(
                         name = "Hata oluştu",

@@ -1,5 +1,6 @@
 package com.turkcell.lyraapp.data.auth
 
+import com.turkcell.lyraapp.data.songs.SongDto
 import kotlinx.coroutines.delay
 import javax.inject.Inject
 
@@ -94,6 +95,54 @@ class FakeAuthRepository @Inject constructor() : AuthRepository {
                 profileCompleted = true
             )
         )
+    }
+
+    override suspend fun recordPlay(songId: String): Result<Boolean> {
+        delay(NETWORK_DELAY_MS)
+        return Result.success(true)
+    }
+
+    override suspend fun getRecentlyPlayed(limit: Int?): Result<List<SongDto>> {
+        delay(NETWORK_DELAY_MS)
+        return Result.success(emptyList())
+    }
+
+    override suspend fun getForYou(limit: Int?): Result<List<SongDto>> {
+        delay(NETWORK_DELAY_MS)
+        return Result.success(emptyList())
+    }
+
+    override suspend fun getRecommendations(limit: Int?): Result<List<SongDto>> {
+        delay(NETWORK_DELAY_MS)
+        return Result.success(emptyList())
+    }
+
+    override suspend fun getUserPlaylists(): Result<List<PlaylistDto>> {
+        delay(NETWORK_DELAY_MS)
+        return Result.success(emptyList())
+    }
+
+    override suspend fun createPlaylist(name: String, description: String?): Result<PlaylistDto> {
+        delay(NETWORK_DELAY_MS)
+        return Result.success(
+            PlaylistDto(
+                id = "p_fake",
+                name = name,
+                description = description,
+                createdAt = "2026-06-23T20:00:00Z",
+                ownerId = "7c3a6b54-9b2e-4a1d-bf0a-9f0b2c1d3e4f"
+            )
+        )
+    }
+
+    override suspend fun addTrackToPlaylist(playlistId: String, songId: String): Result<Boolean> {
+        delay(NETWORK_DELAY_MS)
+        return Result.success(true)
+    }
+
+    override suspend fun removeTrackFromPlaylist(playlistId: String, songId: String): Result<Boolean> {
+        delay(NETWORK_DELAY_MS)
+        return Result.success(true)
     }
 
     @Deprecated("Yeni OTP tabanlı giriş akışına geçildiğinden bu metot kullanımdan kaldırılmıştır.")

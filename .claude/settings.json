@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(git pull)",
+      "PowerShell(git stash pop)",
+      "PowerShell(git add app/src/main/java/com/turkcell/lyraapp/di/AuthModule.kt app/src/main/java/com/turkcell/lyraapp/ui/profile/ProfileContract.kt app/src/main/java/com/turkcell/lyraapp/ui/profile/ProfileViewModel.kt)",
+      "PowerShell(git stash drop)",
+      "PowerShell(git stash push -m \"pre-pull stash 2\")"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\emirc\\Desktop\\GYGY5.0-Kotlin\\LyraAPP-Pair\\app\\src\\main\\java\\com\\turkcell\\lyraapp\\data\\network"
+    ]
+  }
+}

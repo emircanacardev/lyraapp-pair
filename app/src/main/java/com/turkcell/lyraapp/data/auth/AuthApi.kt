@@ -1,8 +1,11 @@
 package com.turkcell.lyraapp.data.auth
 
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface AuthApi {
 
@@ -33,4 +36,34 @@ interface AuthApi {
 
     @GET("api/v1/me")
     suspend fun getCurrentUser(): UserResponseEnvelope
+
+    @POST("api/v1/me/plays")
+    suspend fun recordPlay(@Body request: RecordPlayRequest): RecordPlayResponseEnvelope
+
+    @GET("api/v1/me/recently-played")
+    suspend fun getRecentlyPlayed(@Query("limit") limit: Int? = null): SongListEnvelope
+
+    @GET("api/v1/me/for-you")
+    suspend fun getForYou(@Query("limit") limit: Int? = null): SongListEnvelope
+
+    @GET("api/v1/me/recommendations")
+    suspend fun getRecommendations(@Query("limit") limit: Int? = null): SongListEnvelope
+
+    @GET("api/v1/me/playlists")
+    suspend fun getUserPlaylists(): PlaylistListEnvelope
+
+    @POST("api/v1/me/playlists")
+    suspend fun createPlaylist(@Body request: CreatePlaylistRequest): PlaylistEnvelope
+
+    @POST("api/v1/me/playlists/{id}/tracks")
+    suspend fun addTrackToPlaylist(
+        @Path("id") playlistId: String,
+        @Body request: AddTrackRequest
+    ): AddTrackResponseEnvelope
+
+    @DELETE("api/v1/me/playlists/{id}/tracks/{songId}")
+    suspend fun removeTrackFromPlaylist(
+        @Path("id") playlistId: String,
+        @Path("songId") songId: String
+    ): RemoveTrackResponseEnvelope
 }

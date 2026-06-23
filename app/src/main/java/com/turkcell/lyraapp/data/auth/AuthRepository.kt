@@ -64,6 +64,66 @@ interface AuthRepository {
     suspend fun getCurrentUser(): Result<UserDto>
 
     /**
+     * Kullanıcının bir şarkıyı çaldığını kaydeder. Son çalınanlar ve öneri motorunu besler.
+     *
+     * @param songId Çalınan şarkının id'si.
+     * @return Kayıt başarılıysa true.
+     */
+    suspend fun recordPlay(songId: String): Result<Boolean>
+
+    /**
+     * Kullanıcının en son çaldığı şarkıları döner (distinct, en yeni önce).
+     *
+     * @param limit Maksimum şarkı sayısı (varsayılan 20, max 100).
+     */
+    suspend fun getRecentlyPlayed(limit: Int? = null): Result<List<com.turkcell.lyraapp.data.songs.SongDto>>
+
+    /**
+     * Kullanıcıya özel karışık şarkı listesi döner. Çalma geçmişi yoksa en yeni katalog kullanılır.
+     *
+     * @param limit Maksimum şarkı sayısı.
+     */
+    suspend fun getForYou(limit: Int? = null): Result<List<com.turkcell.lyraapp.data.songs.SongDto>>
+
+    /**
+     * Kullanıcının en çok çaldığı sanatçılardan henüz çalmadığı şarkıları döner.
+     *
+     * @param limit Maksimum şarkı sayısı.
+     */
+    suspend fun getRecommendations(limit: Int? = null): Result<List<com.turkcell.lyraapp.data.songs.SongDto>>
+
+    /**
+     * Kullanıcının kendi oluşturduğu çalma listelerini döner.
+     */
+    suspend fun getUserPlaylists(): Result<List<PlaylistDto>>
+
+    /**
+     * Yeni bir çalma listesi oluşturur.
+     *
+     * @param name Liste adı (max 120 karakter).
+     * @param description İsteğe bağlı açıklama (max 500 karakter).
+     */
+    suspend fun createPlaylist(name: String, description: String? = null): Result<PlaylistDto>
+
+    /**
+     * Kullanıcının bir çalma listesine şarkı ekler.
+     *
+     * @param playlistId Hedef çalma listesinin id'si.
+     * @param songId Eklenecek şarkının id'si.
+     * @return Ekleme başarılıysa true.
+     */
+    suspend fun addTrackToPlaylist(playlistId: String, songId: String): Result<Boolean>
+
+    /**
+     * Kullanıcının bir çalma listesinden şarkı kaldırır.
+     *
+     * @param playlistId Hedef çalma listesinin id'si.
+     * @param songId Kaldırılacak şarkının id'si.
+     * @return Kaldırma başarılıysa true.
+     */
+    suspend fun removeTrackFromPlaylist(playlistId: String, songId: String): Result<Boolean>
+
+    /**
      * Verilen telefon numarası ve şifreyle giriş dener.
      *
      * @return Başarılıysa [Result.success], aksi halde hata mesajı taşıyan [Result.failure].

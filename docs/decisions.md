@@ -153,6 +153,59 @@
   geniş aksiyon butonu) gerektirdiğinden ayrı composable olarak modellendi.
 
 
+### Ana Sayfa Gerçek API Entegrasyonu
+
+- Karar: `DefaultHomeRepository` tüm statik/mock veri kaldırılarak gerçek API'lere bağlandı.
+
+- Son Güncelleme Tarihi: 23.06.2026
+
+- Uygulama:
+  - `songs` → `GET /api/v1/songs` (önceden de bağlıydı)
+  - `recentlyPlayed` → `GET /api/v1/me/recently-played`
+  - `quickPicks` → `GET /api/v1/me/recommendations`
+  - `playlistsForYou` → `GET /api/v1/me/for-you`
+  - `userInitials` → `GET /api/v1/me`
+  - Tüm 5 çağrı `coroutineScope { async {} }` ile paralel atılır.
+  - Auth gerektiren 4 çağrı başarısız olursa (401 — token yok) boş liste döner; yalnızca
+    `GET /api/v1/songs` başarısız olursa tüm feed `Result.failure` döner.
+  - Artwork renkleri API'de bulunmadığından `artworkColorsFor(id)` HSL hash fonksiyonu korundu.
+  - `MockHomeRepository.kt` silindi.
+
+- Sebep: Ana sayfa kullanıcıya özel ve güncel içerik göstermeli; statik veri üretim ortamında
+  kabul edilemez.
+
+
+### Token Saklama ve `/api/v1/me` Profil Entegrasyonu
+
+- Karar: `TokenStorage` (DataStore) + `AuthInterceptor` (OkHttp) + `UserRepository` mimarisi.
+
+- Son Güncelleme Tarihi: 23.06.2026
+
+- Uygulama:
+  - `data/auth/TokenStorage.kt` — `getAccessToken / saveAccessToken / clearTokens` sözleşmesi.
+  - `data/auth/TokenStorageImpl.kt` — `DataStore<Preferences>` (`lyra_preferences`, anahtar `access_token`).
+  - `data/network/AuthInterceptor.kt` — OkHttp `Interceptor`; token varsa `Authorization: Bearer` header ekler,
+    yoksa isteği olduğu gibi iletir. `runBlocking` kullanılır (interceptor zaten arka plan thread'inde çalışır).
+  - `NetworkModule.provideOkHttpClient` — `AuthInterceptor` logging interceptor'dan önce eklendi.
+  - `di/AuthModule.kt` — `TokenStorage → TokenStorageImpl` Hilt bağlaması eklendi.
+  - `data/user/UserDto.kt` + `MeApi.kt` + `UserRepository.kt` + `DefaultUserRepository.kt` — `GET /api/v1/me`
+    veri katmanı; hata `runCatching` ile `Result.failure` olarak sarılır.
+  - `di/UserModule.kt` — `MeApi` ve `UserRepository` Hilt bağlamaları.
+  - `ProfileViewModel` — `UserRepository` inject edilir; `init {}` içinde `loadProfile()` çağrılır.
+    Başarıda `name`, `initials`, `handle` API'den türetilir; hata durumunda `isLoading = false` ile
+    varsayılan değerler korunur (tasarım bozulmaz).
+
+- `GET /api/v1/me` dışındaki endpoint'ler (SongsApi vb.) `AuthInterceptor` üzerinden geçer;
+  token null ise header eklenmez ve public endpoint'ler etkilenmez.
+
+- Token henüz yazılmadıysa (OTP login akışı henüz gerçek API ile bağlı değil) `loadProfile()`
+  çağrısı 401 döner, `Result.failure` yakalanır ve ekran statik varsayılanlarla gösterilir.
+- 23.06.2026 güncellemesi: Tüm `/api/v1/me` endpoint'leri (plays, recently-played, for-you,
+  recommendations, playlists CRUD, track ekleme/kaldırma) `AuthApi` + `AuthRepository` +
+  `DefaultAuthRepository` üçlüsüne eklendi. `PlaylistDto` `AuthDtos.kt` içinde tanımlandı;
+  şarkı listesi döndüren endpoint'ler mevcut `data.songs.SongDto`'yu yeniden kullanır.
+
+
 ### Bildirim Paneli Medya Mini Player
 
 - Karar: `Service` + `Notification.MediaStyle` + `MediaSession` — MVI dışı bileşen.

@@ -49,8 +49,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.turkcell.lyraapp.data.home.ForYouSong
 import com.turkcell.lyraapp.data.home.HomeSong
-import com.turkcell.lyraapp.data.home.PlaylistForYou
 import com.turkcell.lyraapp.data.home.QuickPick
 import com.turkcell.lyraapp.data.home.RecentlyPlayed
 import com.turkcell.lyraapp.ui.icons.LyraIcons
@@ -148,8 +148,8 @@ fun HomeScreen(
                 item { QuickPickGrid(quickPicks = state.quickPicks) }
                 item { SectionHeader(title = "Son çalınanlar", trailingText = "Tümü") }
                 item { RecentlyPlayedRow(items = state.recentlyPlayed) }
-                item { SectionHeader(title = "Senin için çalma listeleri") }
-                item { PlaylistsForYouRow(items = state.playlistsForYou) }
+                item { SectionHeader(title = "Senin İçin") }
+                item { ForYouSongsRow(items = state.forYouSongs) }
             }
         }
     }
@@ -377,8 +377,8 @@ private fun RecentlyPlayedRow(
 }
 
 @Composable
-private fun PlaylistsForYouRow(
-    items: List<PlaylistForYou>,
+private fun ForYouSongsRow(
+    items: List<ForYouSong>,
 ) {
     LazyRow(
         contentPadding = PaddingValues(horizontal = 20.dp),
@@ -399,6 +399,13 @@ private fun PlaylistsForYouRow(
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = item.artist,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -444,10 +451,10 @@ private val previewState = HomeUiState(
         RecentlyPlayed("rp-2", "Derin Mavi", "Okyanus", 0xFF6FBF5A, 0xFF356B2A),
         RecentlyPlayed("rp-3", "Yıldız Tozu", "Polaris", 0xFF3D5A80, 0xFF1B2A45),
     ),
-    playlistsForYou = listOf(
-        PlaylistForYou("pl-1", "Haftalık Keşif", 0xFF9B7FC4, 0xFF5A4480),
-        PlaylistForYou("pl-2", "Sakin Akşamlar", 0xFF6B5FB8, 0xFF3A3270),
-        PlaylistForYou("pl-3", "Enerji Ver", 0xFF3FAE9C, 0xFF1E5D52),
+    forYouSongs = listOf(
+        ForYouSong("s3", "Haftalık Keşif", "Aurora Drift", 0xFF9B7FC4, 0xFF5A4480),
+        ForYouSong("s4", "Sakin Akşamlar", "City Pulse", 0xFF6B5FB8, 0xFF3A3270),
+        ForYouSong("s5", "Enerji Ver", "Neon Wave", 0xFF3FAE9C, 0xFF1E5D52),
     ),
 )
 

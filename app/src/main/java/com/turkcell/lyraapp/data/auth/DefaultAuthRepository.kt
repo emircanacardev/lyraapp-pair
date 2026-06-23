@@ -1,5 +1,6 @@
 package com.turkcell.lyraapp.data.auth
 
+import com.turkcell.lyraapp.data.songs.SongDto
 import javax.inject.Inject
 
 class DefaultAuthRepository @Inject constructor(
@@ -32,6 +33,38 @@ class DefaultAuthRepository @Inject constructor(
 
     override suspend fun getCurrentUser(): Result<UserDto> = runCatching {
         authApi.getCurrentUser().data
+    }
+
+    override suspend fun recordPlay(songId: String): Result<Boolean> = runCatching {
+        authApi.recordPlay(RecordPlayRequest(songId)).data.recorded
+    }
+
+    override suspend fun getRecentlyPlayed(limit: Int?): Result<List<SongDto>> = runCatching {
+        authApi.getRecentlyPlayed(limit).data
+    }
+
+    override suspend fun getForYou(limit: Int?): Result<List<SongDto>> = runCatching {
+        authApi.getForYou(limit).data
+    }
+
+    override suspend fun getRecommendations(limit: Int?): Result<List<SongDto>> = runCatching {
+        authApi.getRecommendations(limit).data
+    }
+
+    override suspend fun getUserPlaylists(): Result<List<PlaylistDto>> = runCatching {
+        authApi.getUserPlaylists().data
+    }
+
+    override suspend fun createPlaylist(name: String, description: String?): Result<PlaylistDto> = runCatching {
+        authApi.createPlaylist(CreatePlaylistRequest(name, description)).data
+    }
+
+    override suspend fun addTrackToPlaylist(playlistId: String, songId: String): Result<Boolean> = runCatching {
+        authApi.addTrackToPlaylist(playlistId, AddTrackRequest(songId)).data.added
+    }
+
+    override suspend fun removeTrackFromPlaylist(playlistId: String, songId: String): Result<Boolean> = runCatching {
+        authApi.removeTrackFromPlaylist(playlistId, songId).data.removed
     }
 
     @Deprecated("Yeni OTP tabanlı giriş akışına geçildiğinden bu metot kullanımdan kaldırılmıştır.")

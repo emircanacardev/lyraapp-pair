@@ -9,6 +9,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import com.turkcell.lyraapp.data.auth.AuthRepository
 import com.turkcell.lyraapp.data.player.PlaybackManager
 import com.turkcell.lyraapp.data.player.PlayingTrack
 import com.turkcell.lyraapp.data.player.PlayerRepository
@@ -28,6 +29,7 @@ class PlayerViewModel @Inject constructor(
     @ApplicationContext context: Context,
     private val playerRepository: PlayerRepository,
     private val playbackManager: PlaybackManager,
+    private val authRepository: AuthRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -38,6 +40,8 @@ class PlayerViewModel @Inject constructor(
     private val artist: String = savedStateHandle.get<String>(ARG_ARTIST).orEmpty()
     private val startColor: Long = savedStateHandle[ARG_START_COLOR] ?: 0xFF8B6FB8L
     private val endColor: Long = savedStateHandle[ARG_END_COLOR] ?: 0xFF4A3D6BL
+
+    private var playRecorded = false
 
     private val _uiState = MutableStateFlow(
         PlayerUiState(
@@ -56,6 +60,10 @@ class PlayerViewModel @Inject constructor(
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             _uiState.update { it.copy(isPlaying = isPlaying) }
             playbackManager.setPlaying(isPlaying)
+            if (isPlaying && !playRecorded) {
+                playRecorded = true
+                viewModelScope.launch { authRepository.recordPlay(songId) }
+            }
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {

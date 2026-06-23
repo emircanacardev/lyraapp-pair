@@ -1,5 +1,6 @@
 package com.turkcell.lyraapp.data.auth
 
+import com.turkcell.lyraapp.data.songs.SongDto
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -101,4 +102,73 @@ data class UserResponseEnvelope(
     val data: UserDto
 )
 
+@Serializable
+data class RecordPlayRequest(
+    val songId: String
+)
+
+@Serializable
+data class RecordPlayDto(
+    val recorded: Boolean
+)
+
+@Serializable
+data class RecordPlayResponseEnvelope(
+    val data: RecordPlayDto
+)
+
+@Serializable
+data class SongListEnvelope(
+    val data: List<SongDto>
+)
+
+@Serializable
+data class PlaylistDto(
+    val id: String,
+    val name: String,
+    val description: String? = null,
+    val createdAt: String,
+    val ownerId: String? = null
+)
+
+@Serializable
+data class PlaylistEnvelope(
+    val data: PlaylistDto
+)
+
+@Serializable
+data class PlaylistListEnvelope(
+    val data: List<PlaylistDto>
+)
+
+@Serializable
+data class CreatePlaylistRequest(
+    val name: String,
+    val description: String? = null
+)
+
+@Serializable
+data class AddTrackRequest(
+    val songId: String
+)
+
+@Serializable
+data class AddTrackDto(
+    val added: Boolean
+)
+
+@Serializable
+data class AddTrackResponseEnvelope(
+    val data: AddTrackDto
+)
+
+@Serializable
+data class RemoveTrackDto(
+    val removed: Boolean
+)
+
+@Serializable
+data class RemoveTrackResponseEnvelope(
+    val data: RemoveTrackDto
+)
 

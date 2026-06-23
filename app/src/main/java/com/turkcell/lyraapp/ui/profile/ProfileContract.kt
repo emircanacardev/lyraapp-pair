@@ -1,11 +1,8 @@
 package com.turkcell.lyraapp.ui.profile
 
-/**
- * Profil ekranının MVI sözleşmesi.
- */
 data class ProfileUiState(
     val isLoading: Boolean = false,
-    val isDarkTheme: Boolean = false, // seçili olan tema
+    val isDarkTheme: Boolean = false,
     val initials: String = "",
     val name: String = "",
     val handle: String = "",

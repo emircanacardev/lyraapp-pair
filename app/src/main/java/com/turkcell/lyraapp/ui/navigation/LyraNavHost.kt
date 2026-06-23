@@ -47,6 +47,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.turkcell.lyraapp.data.player.PlaybackManager
 import com.turkcell.lyraapp.data.player.PlayingTrack
+import com.turkcell.lyraapp.ui.auth.complete.ProfileCompleteRoute
 import com.turkcell.lyraapp.ui.auth.login.LoginRoute
 import com.turkcell.lyraapp.ui.auth.register.RegisterRoute
 import com.turkcell.lyraapp.ui.favorites.FavoritesRoute
@@ -116,11 +117,29 @@ fun LyraNavHost(
             composable(LyraDestination.Login.route) {
                 LoginRoute(
                     onNavigateToHome = { navController.navigateToHomeClearingAuth() },
+                    onNavigateToProfileComplete = {
+                        navController.navigate(LyraDestination.ProfileComplete.route) {
+                            popUpTo(LyraDestination.Login.route) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    },
                     onNavigateToRegister = {
                         navController.navigate(LyraDestination.Register.route) {
                             launchSingleTop = true
                         }
                     },
+                )
+            }
+
+            composable(LyraDestination.ProfileComplete.route) {
+                ProfileCompleteRoute(
+                    onNavigateToHome = { navController.navigateToHomeClearingAuth() },
+                    onNavigateToLogin = {
+                        navController.navigate(LyraDestination.Login.route) {
+                            popUpTo(LyraDestination.ProfileComplete.route) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    }
                 )
             }
 

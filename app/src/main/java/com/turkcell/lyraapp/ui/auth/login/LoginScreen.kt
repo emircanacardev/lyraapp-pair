@@ -55,6 +55,7 @@ import androidx.compose.runtime.getValue
 @Composable
 fun LoginRoute(
     onNavigateToHome: () -> Unit,
+    onNavigateToProfileComplete: () -> Unit,
     onNavigateToRegister: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LoginViewModel = hiltViewModel(),
@@ -66,7 +67,9 @@ fun LoginRoute(
         viewModel.effect.collect { effect ->
             when (effect) {
                 is LoginEffect.ShowError -> snackbarHostState.showSnackbar(effect.message)
+                is LoginEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.message)
                 LoginEffect.NavigateToHome -> onNavigateToHome()
+                LoginEffect.NavigateToProfileComplete -> onNavigateToProfileComplete()
                 LoginEffect.NavigateToRegister -> onNavigateToRegister()
             }
         }
@@ -116,29 +119,33 @@ fun LoginScreen(
 
             PhoneNumberField(
                 value = state.phoneNumber,
+                enabled = !state.isOtpSent,
                 onValueChange = { onIntent(LoginIntent.PhoneNumberChanged(it)) },
             )
-            Spacer(Modifier.height(14.dp))
 
-            PasswordField(
-                value = state.password,
-                isPasswordVisible = state.isPasswordVisible,
-                onValueChange = { onIntent(LoginIntent.PasswordChanged(it)) },
-                onToggleVisibility = { onIntent(LoginIntent.TogglePasswordVisibility) },
-            )
-            Spacer(Modifier.height(10.dp))
+            if (state.isOtpSent) {
+                Spacer(Modifier.height(14.dp))
+                VerificationCodeField(
+                    value = state.verificationCode,
+                    onValueChange = { onIntent(LoginIntent.VerificationCodeChanged(it)) },
+                )
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    text = "Numarayı değiştir",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .clickable { onIntent(LoginIntent.BackToPhoneInput) },
+                )
+            }
 
-            Text(
-                text = "Şifremi unuttum",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.align(Alignment.End),
-            )
             Spacer(Modifier.height(28.dp))
 
             LoginButton(
-                enabled = state.isLoginEnabled,
+                text = if (!state.isOtpSent) "Doğrulama Kodu Gönder" else "Giriş yap",
+                enabled = state.isActionEnabled,
                 isLoading = state.isLoading,
                 onClick = { onIntent(LoginIntent.Submit) },
             )
@@ -182,7 +189,7 @@ private fun HeaderTexts() {
     )
     Spacer(Modifier.height(8.dp))
     Text(
-        text = "Hesabına giriş yap, kaldığın yerden dinlemeye devam et.",
+        text = "Telefon numaranla giriş yap, kaldığın yerden dinlemeye devam et.",
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.secondary,
     )
@@ -191,11 +198,13 @@ private fun HeaderTexts() {
 @Composable
 private fun PhoneNumberField(
     value: String,
+    enabled: Boolean,
     onValueChange: (String) -> Unit,
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
+        enabled = enabled,
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -213,11 +222,9 @@ private fun PhoneNumberField(
 }
 
 @Composable
-private fun PasswordField(
+private fun VerificationCodeField(
     value: String,
-    isPasswordVisible: Boolean,
     onValueChange: (String) -> Unit,
-    onToggleVisibility: () -> Unit,
 ) {
     OutlinedTextField(
         value = value,
@@ -225,29 +232,21 @@ private fun PasswordField(
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        placeholder = { Text("Şifre") },
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-        visualTransformation =
-            if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+        label = { Text("Doğrulama kodu") },
+        placeholder = { Text("123456") },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         leadingIcon = {
             Icon(
                 imageVector = LyraIcons.Lock,
                 contentDescription = null,
             )
         },
-        trailingIcon = {
-            IconButton(onClick = onToggleVisibility) {
-                Icon(
-                    imageVector = LyraIcons.Visibility,
-                    contentDescription = if (isPasswordVisible) "Şifreyi gizle" else "Şifreyi göster",
-                )
-            }
-        },
     )
 }
 
 @Composable
 private fun LoginButton(
+    text: String,
     enabled: Boolean,
     isLoading: Boolean,
     onClick: () -> Unit,
@@ -268,7 +267,7 @@ private fun LoginButton(
             )
         } else {
             Text(
-                text = "Giriş yap",
+                text = text,
                 style = MaterialTheme.typography.titleMedium,
             )
             Spacer(Modifier.width(8.dp))
@@ -320,7 +319,7 @@ private fun LoginScreenLightPreview() {
 private fun LoginScreenDarkPreview() {
     LyraAppTheme(darkTheme = true) {
         LoginScreen(
-            state = LoginUiState(phoneNumber = "555 123 45 67", password = "secret", isLoginEnabled = true),
+            state = LoginUiState(phoneNumber = "555 123 45 67", verificationCode = "123456", isOtpSent = true, isActionEnabled = true),
             onIntent = {},
         )
     }

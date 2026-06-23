@@ -1,5 +1,6 @@
 package com.turkcell.lyraapp.data.network
 
+import com.turkcell.lyraapp.data.auth.AuthApi
 import com.turkcell.lyraapp.data.songs.SongsApi
 import dagger.Module
 import dagger.Provides
@@ -28,11 +29,12 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient {
+    fun provideOkHttpClient(authInterceptor: AuthInterceptor): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BASIC
+            level = HttpLoggingInterceptor.Level.BODY
         }
         return OkHttpClient.Builder()
+            .addInterceptor(authInterceptor)
             .addInterceptor(logging)
             .build()
     }
@@ -49,4 +51,8 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideSongsApi(retrofit: Retrofit): SongsApi = retrofit.create(SongsApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideAuthApi(retrofit: Retrofit): AuthApi = retrofit.create(AuthApi::class.java)
 }

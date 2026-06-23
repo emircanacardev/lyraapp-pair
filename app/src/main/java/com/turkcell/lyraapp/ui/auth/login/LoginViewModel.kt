@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import com.turkcell.lyraapp.data.auth.SessionManager
+
 /**
  * Login ekranının MVI ViewModel'i.
  *
@@ -23,6 +25,7 @@ import javax.inject.Inject
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val authRepository: AuthRepository,
+    private val sessionManager: SessionManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
@@ -34,8 +37,8 @@ class LoginViewModel @Inject constructor(
     fun onIntent(intent: LoginIntent) {
         when (intent) {
             is LoginIntent.PhoneNumberChanged -> updateForm { it.copy(phoneNumber = intent.value) }
-            is LoginIntent.PasswordChanged -> updateForm { it.copy(password = intent.value) }
-            is LoginIntent.TogglePasswordVisibility -> _uiState.update { it.copy(isPasswordVisible = !it.isPasswordVisible) }
+            is LoginIntent.VerificationCodeChanged -> updateForm { it.copy(verificationCode = intent.value) }
+            is LoginIntent.BackToPhoneInput -> updateForm { it.copy(isOtpSent = false, verificationCode = "") }
             is LoginIntent.Submit -> submit()
             is LoginIntent.RegisterClicked -> viewModelScope.launch { _effect.send(LoginEffect.NavigateToRegister) }
         }
@@ -45,28 +48,61 @@ class LoginViewModel @Inject constructor(
     private fun updateForm(transform: (LoginUiState) -> LoginUiState) {
         _uiState.update { current ->
             val updated = transform(current)
-            updated.copy(isLoginEnabled = updated.isFormValid())
+            updated.copy(isActionEnabled = updated.isFormValid())
         }
     }
 
     private fun submit() {
         val state = _uiState.value
-        if (!state.isLoginEnabled || state.isLoading) return
+        if (!state.isActionEnabled || state.isLoading) return
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            val result = authRepository.login(state.phoneNumber, state.password)
-            _uiState.update { it.copy(isLoading = false) }
+            if (!state.isOtpSent) {
+                // OTP İstek Aşaması
+                val formattedPhone = "+90" + state.phoneNumber.replace("\\s".toRegex(), "")
+                val result = authRepository.requestOtp(formattedPhone)
+                _uiState.update { it.copy(isLoading = false) }
 
-            result
-                .onSuccess { _effect.send(LoginEffect.NavigateToHome) }
-                .onFailure { error ->
-                    _effect.send(LoginEffect.ShowError(error.message ?: "Giriş başarısız."))
-                }
+                result
+                    .onSuccess {
+                        _uiState.update { it.copy(isOtpSent = true) }
+                        updateForm { it } // Buton aktifliğini yeniden hesapla
+                        _effect.send(LoginEffect.ShowMessage("Doğrulama kodu telefonunuza gönderildi."))
+                    }
+                    .onFailure { error ->
+                        _effect.send(LoginEffect.ShowError(error.message ?: "Kod gönderme başarısız."))
+                    }
+            } else {
+                // OTP Doğrulama Aşaması
+                val formattedPhone = "+90" + state.phoneNumber.replace("\\s".toRegex(), "")
+                val result = authRepository.verifyOtp(formattedPhone, state.verificationCode)
+                _uiState.update { it.copy(isLoading = false) }
+
+                result
+                    .onSuccess { session ->
+                        android.util.Log.d("LoginViewModel", "Saving tokens. access: ${session.accessToken}, refresh: ${session.refreshToken}")
+                        sessionManager.setAccessToken(session.accessToken)
+                        sessionManager.setRefreshToken(session.refreshToken)
+                        if (session.firstTime) {
+                            _effect.send(LoginEffect.NavigateToProfileComplete)
+                        } else {
+                            _effect.send(LoginEffect.NavigateToHome)
+                        }
+                    }
+                    .onFailure { error ->
+                        _effect.send(LoginEffect.ShowError(error.message ?: "Doğrulama başarısız."))
+                    }
+            }
         }
     }
 }
 
-/** Giriş butonunun aktif olması için minimal validasyon. */
-private fun LoginUiState.isFormValid(): Boolean =
-    phoneNumber.isNotBlank() && password.isNotBlank()
+/** Giriş butonunun aktif olması için form geçerlilik kontrolü. */
+private fun LoginUiState.isFormValid(): Boolean {
+    return if (!isOtpSent) {
+        phoneNumber.trim().length >= 10
+    } else {
+        verificationCode.trim().length >= 6
+    }
+}

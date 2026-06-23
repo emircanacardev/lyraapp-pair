@@ -331,6 +331,15 @@ object LyraIcons {
                 "M13,3v8h8V3H13zM19,9h-4V5h4V9zM13,13v8h8v-8H13zM19,19h-4v-4h4V19z",
         )
     }
+
+    /** Takvim ikonu (Material CalendarToday). */
+    val Calendar: ImageVector by lazy {
+        lyraIcon(
+            name = "Calendar",
+            pathData = "M19,3h-1V1h-2v2H8V1H6v2H5c-1.11,0 -2,0.9 -2,2v14c0,1.1 0.89,2 2,2h14c1.1,0 " +
+                "2,-0.9 2,-2V5c0,-1.1 -0.9,-2 -2,-2zM19,19H5V8h14v11zM7,10h5v5H7v-5z",
+        )
+    }
 }
 
 /**

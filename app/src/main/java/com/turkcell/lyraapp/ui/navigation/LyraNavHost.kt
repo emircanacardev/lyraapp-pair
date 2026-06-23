@@ -39,45 +39,30 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.NavType
 import androidx.navigation.navArgument
+import com.turkcell.lyraapp.data.player.PlaybackManager
+import com.turkcell.lyraapp.data.player.PlayingTrack
 import com.turkcell.lyraapp.ui.auth.login.LoginRoute
 import com.turkcell.lyraapp.ui.auth.register.RegisterRoute
+import com.turkcell.lyraapp.ui.favorites.FavoritesRoute
 import com.turkcell.lyraapp.ui.home.HomeRoute
+import com.turkcell.lyraapp.ui.icons.LyraIcons
 import com.turkcell.lyraapp.ui.library.LibraryRoute
 import com.turkcell.lyraapp.ui.library.create.CreatePlaylistRoute
 import com.turkcell.lyraapp.ui.library.detail.PlaylistDetailRoute
-import com.turkcell.lyraapp.ui.search.SearchRoute
-import com.turkcell.lyraapp.ui.favorites.FavoritesRoute
-import com.turkcell.lyraapp.ui.profile.ProfileRoute
 import com.turkcell.lyraapp.ui.player.PlayerRoute
-import com.turkcell.lyraapp.ui.icons.LyraIcons
-import com.turkcell.lyraapp.data.player.PlayingTrack
-import com.turkcell.lyraapp.data.player.PlaybackManager
+import com.turkcell.lyraapp.ui.profile.ProfileRoute
+import com.turkcell.lyraapp.ui.search.SearchRoute
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 
-/**
- * Uygulamanın iskelet navigasyon yapısı.
- *
- * Tek [NavHost], Auth grafiği ile ana akış sekmelerini barındırır; başlangıç hedefi
- * [LyraDestination.Login]'dir. Dış [Scaffold]'ın `bottomBar` yuvasındaki [LyraBottomBar]
- * yalnızca üst düzey sekme rotalarında görünür; böylece çubuk her ana sayfanın altında
- * yer alır, Auth ekranlarında gizlenir.
- *
- * Her ekranın `Route` composable'ı, MVI Effect'lerini buradan sağlanan navigasyon
- * lambda'larına köprüler (ViewModel navigasyon API'si bilmez; bkz. mvi-viewmodel-rules §6).
- *
- * Dış Scaffold'ın `contentWindowInsets`'i sıfırlanır: sistem çubuğu boşluklarını her ekran
- * kendisi yönetir (Login/Register'da olduğu gibi); içerik dolgusu yalnızca alt çubuğun
- * yüksekliğini taşır.
- */
 @Composable
 fun LyraNavHost(
     modifier: Modifier = Modifier,
@@ -105,11 +90,12 @@ fun LyraNavHost(
                 if (track != null && isTopLevelRoute(currentRoute)) {
                     MiniPlayer(
                         track = track,
-                        onPlayPauseToggle = { playbackManager.togglePlayPause() },
+                        onPlayPauseToggle = { playbackManager.setPlaying(!track.isPlaying) },
                         onFavoriteToggle = { playbackManager.toggleFavorite() },
-                        onSkipNext = { playbackManager.skipNext() },
                         onClick = {
-                            navController.navigate("player?title=${track.title}&subtitle=${track.subtitle}&startColor=${track.startColor}&endColor=${track.endColor}")
+                            navController.navigate(
+                                "player?songId=${track.id}&title=${track.title}&artist=${track.artist}&startColor=${track.startColor}&endColor=${track.endColor}"
+                            )
                         }
                     )
                 }
@@ -153,8 +139,8 @@ fun LyraNavHost(
 
             composable(LyraDestination.Home.route) {
                 HomeRoute(
-                    onNavigateToPlayer = { title, subtitle, startColor, endColor ->
-                        navController.navigate("player?title=$title&subtitle=$subtitle&startColor=$startColor&endColor=$endColor")
+                    onNavigateToPlayer = { songId, title, artist, startColor, endColor ->
+                        navController.navigate("player?songId=$songId&title=$title&artist=$artist&startColor=$startColor&endColor=$endColor")
                     }
                 )
             }
@@ -181,8 +167,9 @@ fun LyraNavHost(
             composable(
                 route = LyraDestination.Player.route,
                 arguments = listOf(
-                    navArgument("title") { type = NavType.StringType; nullable = true },
-                    navArgument("subtitle") { type = NavType.StringType; nullable = true },
+                    navArgument("songId") { type = NavType.StringType; nullable = true; defaultValue = "" },
+                    navArgument("title") { type = NavType.StringType; nullable = true; defaultValue = "" },
+                    navArgument("artist") { type = NavType.StringType; nullable = true; defaultValue = "" },
                     navArgument("startColor") { type = NavType.LongType; defaultValue = 0xFF8B6FB8L },
                     navArgument("endColor") { type = NavType.LongType; defaultValue = 0xFF4A3D6BL },
                 ),
@@ -193,11 +180,6 @@ fun LyraNavHost(
     }
 }
 
-/**
- * Alt çubuk sekmesine standart desenle geçiş yapar: back stack'te sekme kopyası birikmez
- * (`launchSingleTop`), sekmeler arası geçişte durum saklanır/geri yüklenir
- * (`saveState`/`restoreState`) ve geri tuşu daima Home'a döner (`popUpTo(Home)`).
- */
 private fun NavHostController.navigateToTab(destination: LyraDestination) {
     navigate(destination.route) {
         popUpTo(LyraDestination.Home.route) { saveState = true }
@@ -206,33 +188,10 @@ private fun NavHostController.navigateToTab(destination: LyraDestination) {
     }
 }
 
-/** Auth akışını back stack'ten temizleyerek Home'a geçer (geri tuşu Login'e dönmez). */
 private fun NavHostController.navigateToHomeClearingAuth() {
     navigate(LyraDestination.Home.route) {
         popUpTo(LyraDestination.Login.route) { inclusive = true }
         launchSingleTop = true
-    }
-}
-
-/**
- * Geçici sekme içeriği. Sekme ekranları henüz kapsamda değildir; her biri kendi
- * feature paketinde MVI sözleşmesiyle (Contract + ViewModel + Route/Screen) yazıldığında
- * bu composable kaldırılacak ve rotalar gerçek Route'lara bağlanacaktır.
- */
-@Composable
-private fun PlaceholderScreen(
-    title: String,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 
@@ -247,7 +206,6 @@ fun MiniPlayer(
     track: PlayingTrack,
     onPlayPauseToggle: () -> Unit,
     onFavoriteToggle: () -> Unit,
-    onSkipNext: () -> Unit,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -290,9 +248,7 @@ fun MiniPlayer(
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = track.title,
                         style = MaterialTheme.typography.bodyMedium,
@@ -302,7 +258,7 @@ fun MiniPlayer(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = track.subtitle,
+                        text = track.artist,
                         style = MaterialTheme.typography.bodySmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -321,18 +277,9 @@ fun MiniPlayer(
 
                 IconButton(onClick = onPlayPauseToggle) {
                     Icon(
-                        imageVector = if (track.isPlaying) MiniPlayerIcons.Pause else MiniPlayerIcons.PlayArrow,
+                        imageVector = if (track.isPlaying) LyraIcons.Pause else LyraIcons.Play,
                         contentDescription = if (track.isPlaying) "Duraklat" else "Oynat",
                         tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-
-                IconButton(onClick = onSkipNext) {
-                    Icon(
-                        imageVector = MiniPlayerIcons.SkipNext,
-                        contentDescription = "Sonraki",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -362,10 +309,6 @@ private object MiniPlayerIcons {
 
     val Pause: ImageVector by lazy {
         lyraIcon("Pause", "M6 19h4V5H6v14zm8-14v14h4V5h-4z")
-    }
-
-    val SkipNext: ImageVector by lazy {
-        lyraIcon("SkipNext", "M6 18l8.5-6L6 6v12zM16 6v12h2V6z")
     }
 
     private fun lyraIcon(name: String, pathData: String): ImageVector =

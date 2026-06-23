@@ -17,6 +17,7 @@ class MockHomeRepository @Inject constructor() : HomeRepository {
         return Result.success(
             HomeFeed(
                 userInitials = "ZK",
+                songs = emptyList(),
                 quickPicks = QUICK_PICKS,
                 recentlyPlayed = RECENTLY_PLAYED,
                 playlistsForYou = PLAYLISTS_FOR_YOU,

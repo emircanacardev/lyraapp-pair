@@ -90,6 +90,48 @@ object LyraIcons {
         )
     }
 
+    // ── Oynatıcı kontrol ikonları (PlayerScreen) ──
+
+    /** Oynat (Material PlayArrow). */
+    val Play: ImageVector by lazy {
+        lyraIcon(
+            name = "Play",
+            pathData = "M8,5v14l11,-7z",
+        )
+    }
+
+    /** Duraklat (Material Pause). */
+    val Pause: ImageVector by lazy {
+        lyraIcon(
+            name = "Pause",
+            pathData = "M6,19h4V5H6v14zM14,5v14h4V5h-4z",
+        )
+    }
+
+    /** Baştan başlat (Material Replay). */
+    val Restart: ImageVector by lazy {
+        lyraIcon(
+            name = "Restart",
+            pathData = "M12,5V1L7,6l5,5V7c3.31,0 6,2.69 6,6s-2.69,6 -6,6 -6,-2.69 -6,-6H4c0,4.42 3.58,8 8,8s8,-3.58 8,-8 -3.58,-8 -8,-8z",
+        )
+    }
+
+    /** 10 saniye geri (Material FastRewind). */
+    val Rewind10: ImageVector by lazy {
+        lyraIcon(
+            name = "Rewind10",
+            pathData = "M11,18V6l-8.5,6 8.5,6zM11.5,12l8.5,6V6l-8.5,6z",
+        )
+    }
+
+    /** 10 saniye ileri (Material FastForward). */
+    val Forward10: ImageVector by lazy {
+        lyraIcon(
+            name = "Forward10",
+            pathData = "M4,18l8.5,-6L4,6v12zM13,6v12l8.5,-6L13,6z",
+        )
+    }
+
     // ── Alt gezinme çubuğu (LyraBottomBar) ikonları ──
 
     /** Ana sayfa sekmesi, seçili durum (Material Home, filled). */

@@ -1,112 +1,177 @@
 package com.turkcell.lyraapp.ui.player
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import com.turkcell.lyraapp.data.player.PlaybackManager
+import com.turkcell.lyraapp.data.player.PlayingTrack
+import com.turkcell.lyraapp.data.player.PlayerRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.Flow
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import com.turkcell.lyraapp.data.player.PlaybackManager
 
-/**
- * Now Playing (Çalar) ekranının MVI ViewModel sınıfı.
- *
- * SavedStateHandle aracılığıyla navigasyondan gelen "title", "subtitle", "startColor"
- * ve "endColor" argümanlarını okur ve başlangıç durumu olarak atar.
- */
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
-    savedStateHandle: SavedStateHandle,
+    @ApplicationContext context: Context,
+    private val playerRepository: PlayerRepository,
     private val playbackManager: PlaybackManager,
+    savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
-    private val title: String = savedStateHandle["title"] ?: "Bilinmeyen Şarkı"
-    private val subtitle: String = savedStateHandle["subtitle"] ?: "Bilinmeyen Sanatçı"
-    private val startColor: Long = savedStateHandle["startColor"] ?: 0xFF8B6FB8L
-    private val endColor: Long = savedStateHandle["endColor"] ?: 0xFF4A3D6BL
+    private val songId: String = checkNotNull(savedStateHandle[ARG_SONG_ID]) {
+        "PlayerViewModel requires '$ARG_SONG_ID' argument."
+    }
+    private val title: String = savedStateHandle.get<String>(ARG_TITLE).orEmpty()
+    private val artist: String = savedStateHandle.get<String>(ARG_ARTIST).orEmpty()
+    private val startColor: Long = savedStateHandle[ARG_START_COLOR] ?: 0xFF8B6FB8L
+    private val endColor: Long = savedStateHandle[ARG_END_COLOR] ?: 0xFF4A3D6BL
 
     private val _uiState = MutableStateFlow(
         PlayerUiState(
             title = title,
-            subtitle = subtitle,
+            artist = artist,
             startColor = startColor,
             endColor = endColor,
+            isLoading = true,
         )
     )
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
 
-    private val _effect = Channel<PlayerEffect>(Channel.BUFFERED)
-    val effect: Flow<PlayerEffect> = _effect.receiveAsFlow()
+    private val player: ExoPlayer = ExoPlayer.Builder(context).build()
 
-    init {
-        // Eğer merkezi çalma durumu boşsa veya gelen argümanlar farklıysa durumu güncelle/başlat
-        val currentTrack = playbackManager.playingTrack.value
-        if (currentTrack == null || currentTrack.title != title || currentTrack.subtitle != subtitle) {
-            playbackManager.playTrack(
-                title = title,
-                subtitle = subtitle,
-                startColor = startColor,
-                endColor = endColor
-            )
+    private val listener = object : Player.Listener {
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            _uiState.update { it.copy(isPlaying = isPlaying) }
+            playbackManager.setPlaying(isPlaying)
         }
 
-        // Merkezi çalma durumunu uiState'e bağla
-        viewModelScope.launch {
-            playbackManager.playingTrack.collect { track ->
-                if (track != null) {
-                    _uiState.update { current ->
-                        current.copy(
-                            title = track.title,
-                            subtitle = track.subtitle,
-                            startColor = track.startColor,
-                            endColor = track.endColor,
-                            isPlaying = track.isPlaying,
-                            isFavorite = track.isFavorite,
-                            progress = track.progress,
-                            currentTime = track.currentTime,
-                            duration = track.duration
-                        )
-                    }
-                }
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            _uiState.update {
+                it.copy(
+                    isLoading = it.isLoading && playbackState == Player.STATE_BUFFERING && it.durationMs == 0L,
+                    isBuffering = playbackState == Player.STATE_BUFFERING,
+                    hasEnded = playbackState == Player.STATE_ENDED,
+                )
+            }
+            if (playbackState == Player.STATE_READY || playbackState == Player.STATE_ENDED) {
+                _uiState.update { it.copy(isLoading = false) }
+            }
+        }
+
+        override fun onPlayerError(error: PlaybackException) {
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    isBuffering = false,
+                    errorMessage = error.localizedMessage ?: "Şarkı oynatılamadı.",
+                )
             }
         }
     }
 
+    init {
+        playbackManager.setTrack(
+            PlayingTrack(
+                id = songId,
+                title = title,
+                artist = artist,
+                startColor = startColor,
+                endColor = endColor,
+            )
+        )
+        player.addListener(listener)
+        loadAndPlay()
+        observePosition()
+    }
+
     fun onIntent(intent: PlayerIntent) {
         when (intent) {
-            is PlayerIntent.TogglePlayPause -> {
-                playbackManager.togglePlayPause()
+            PlayerIntent.TogglePlayPause -> {
+                if (player.isPlaying) player.pause() else player.play()
             }
-            is PlayerIntent.ToggleFavorite -> {
-                playbackManager.toggleFavorite()
+            PlayerIntent.Restart -> {
+                player.seekTo(0L)
+                player.play()
             }
-            is PlayerIntent.ToggleShuffle -> {
-                _uiState.update { it.copy(isShuffleEnabled = !it.isShuffleEnabled) }
+            PlayerIntent.SeekForward -> seekBy(SEEK_STEP_MS)
+            PlayerIntent.SeekBackward -> seekBy(-SEEK_STEP_MS)
+            is PlayerIntent.SeekTo -> {
+                val target = intent.positionMs.coerceIn(0L, player.duration.coerceAtLeast(0L))
+                player.seekTo(target)
             }
-            is PlayerIntent.ToggleRepeat -> {
-                _uiState.update { it.copy(isRepeatEnabled = !it.isRepeatEnabled) }
-            }
-            is PlayerIntent.ProgressChanged -> {
-                playbackManager.setProgress(intent.value)
-            }
-            is PlayerIntent.NavigateBack -> {
-                viewModelScope.launch {
-                    _effect.send(PlayerEffect.NavigateBack)
+            PlayerIntent.Retry -> loadAndPlay()
+        }
+    }
+
+    private fun seekBy(deltaMs: Long) {
+        val duration = player.duration.coerceAtLeast(0L)
+        val target = (player.currentPosition + deltaMs).coerceIn(0L, duration)
+        player.seekTo(target)
+    }
+
+    private fun loadAndPlay() {
+        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+        viewModelScope.launch {
+            playerRepository.getStreamUrl(songId)
+                .onSuccess { url ->
+                    player.setMediaItem(MediaItem.fromUri(Uri.parse(url)))
+                    player.prepare()
+                    player.playWhenReady = true
                 }
-            }
-            is PlayerIntent.SkipNext -> {
-                playbackManager.skipNext()
-            }
-            is PlayerIntent.SkipPrevious -> {
-                playbackManager.skipPrevious()
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = error.message ?: "Stream adresi alınamadı.",
+                        )
+                    }
+                }
+        }
+    }
+
+    private fun observePosition() {
+        viewModelScope.launch {
+            while (isActive) {
+                val positionMs = player.currentPosition.coerceAtLeast(0L)
+                val durationMs = player.duration.coerceAtLeast(0L)
+                _uiState.update {
+                    it.copy(
+                        positionMs = positionMs,
+                        durationMs = durationMs,
+                    )
+                }
+                playbackManager.updateProgress(positionMs, durationMs)
+                delay(POSITION_POLL_MS)
             }
         }
+    }
+
+    override fun onCleared() {
+        player.removeListener(listener)
+        player.release()
+    }
+
+    companion object {
+        const val ARG_SONG_ID = "songId"
+        const val ARG_TITLE = "title"
+        const val ARG_ARTIST = "artist"
+        const val ARG_START_COLOR = "startColor"
+        const val ARG_END_COLOR = "endColor"
+
+        private const val SEEK_STEP_MS = 10_000L
+        private const val POSITION_POLL_MS = 500L
     }
 }

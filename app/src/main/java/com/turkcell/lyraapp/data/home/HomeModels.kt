@@ -1,15 +1,16 @@
 package com.turkcell.lyraapp.data.home
 
-/**
- * Ana sayfa beslemesinin (feed) tamamı: tek repository çağrısıyla dönen aggregate model.
- *
- * Kapak görselleri henüz bir CDN/görsel servisi olmadığından gradyan renk çifti
- * (`artworkStartColor`/`artworkEndColor`, ARGB hex) ile temsil edilir. Gerçek API
- * geldiğinde bu alanlar görsel URL'siyle değiştirilebilir; UI katmanı yalnızca
- * bu modeli çizer (bkz. docs/decisions.md — Ana Sayfa Veri Katmanı).
- */
+data class HomeSong(
+    val id: String,
+    val title: String,
+    val artist: String,
+    val artworkStartColor: Long,
+    val artworkEndColor: Long,
+)
+
 data class HomeFeed(
     val userInitials: String,
+    val songs: List<HomeSong>,
     val quickPicks: List<QuickPick>,
     val recentlyPlayed: List<RecentlyPlayed>,
     val playlistsForYou: List<PlaylistForYou>,

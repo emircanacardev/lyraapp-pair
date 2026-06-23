@@ -40,32 +40,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.vector.PathParser
-import androidx.compose.ui.graphics.SolidColor
-
+import com.turkcell.lyraapp.data.home.HomeSong
 import com.turkcell.lyraapp.data.home.PlaylistForYou
 import com.turkcell.lyraapp.data.home.QuickPick
 import com.turkcell.lyraapp.data.home.RecentlyPlayed
 import com.turkcell.lyraapp.ui.icons.LyraIcons
 import com.turkcell.lyraapp.ui.theme.LyraAppTheme
 
-/**
- * Home akışının durumlu (stateful) giriş noktası.
- *
- * [HomeViewModel]'i Hilt'ten alır, durumu yaşam döngüsüne duyarlı şekilde toplar ve
- * tek seferlik [HomeEffect]'leri tüketir. Yükleme hatasında snackbar üzerinden
- * "Tekrar dene" aksiyonu [HomeIntent.Retry] niyetine köprülenir.
- */
 @Composable
 fun HomeRoute(
-    onNavigateToPlayer: (title: String, subtitle: String, startColor: Long, endColor: Long) -> Unit,
+    onNavigateToPlayer: (songId: String, title: String, artist: String, startColor: Long, endColor: Long) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
@@ -86,10 +79,11 @@ fun HomeRoute(
                 }
                 is HomeEffect.NavigateToPlayer -> {
                     onNavigateToPlayer(
+                        effect.songId,
                         effect.title,
-                        effect.subtitle,
+                        effect.artist,
                         effect.startColor,
-                        effect.endColor
+                        effect.endColor,
                     )
                 }
             }
@@ -104,13 +98,6 @@ fun HomeRoute(
     )
 }
 
-/**
- * Ana sayfa ("Ne dinlemek istersin?") ekranı.
- *
- * Tamamen durumsuzdur (stateless): durumu [state] üzerinden alır, kullanıcı etkileşimlerini
- * [onIntent] ile yukarı yayımlar. Alt çubuk boşluğu dış Scaffold'dan (LyraNavHost) gelir;
- * burada yalnızca durum çubuğu (status bar) boşluğu yönetilir.
- */
 @Composable
 fun HomeScreen(
     state: HomeUiState,
@@ -149,17 +136,25 @@ fun HomeScreen(
                         onThemeToggle = { onIntent(HomeIntent.ToggleTheme) }
                     )
                 }
-                item { QuickPickGrid(quickPicks = state.quickPicks, onIntent = onIntent) }
+                if (state.songs.isNotEmpty()) {
+                    item { SectionHeader(title = "Şarkılar") }
+                    items(state.songs, key = { it.id }) { song ->
+                        SongRow(
+                            song = song,
+                            onClick = { onIntent(HomeIntent.SongSelected(song)) },
+                        )
+                    }
+                }
+                item { QuickPickGrid(quickPicks = state.quickPicks) }
                 item { SectionHeader(title = "Son çalınanlar", trailingText = "Tümü") }
-                item { RecentlyPlayedRow(items = state.recentlyPlayed, onIntent = onIntent) }
+                item { RecentlyPlayedRow(items = state.recentlyPlayed) }
                 item { SectionHeader(title = "Senin için çalma listeleri") }
-                item { PlaylistsForYouRow(items = state.playlistsForYou, onIntent = onIntent) }
+                item { PlaylistsForYouRow(items = state.playlistsForYou) }
             }
         }
     }
 }
 
-/** Selamlama + başlık ile tema ikonu ve kullanıcı avatarını içeren üst bölüm. */
 @Composable
 private fun HomeHeader(
     greeting: String,
@@ -218,11 +213,48 @@ private fun UserAvatar(initials: String) {
     }
 }
 
-/** Hızlı seçimlerin 2 sütunlu sabit grid'i (6 öğe; dikey scroll LazyColumn'a aittir). */
+@Composable
+private fun SongRow(
+    song: HomeSong,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Artwork(
+            startColor = song.artworkStartColor,
+            endColor = song.artworkEndColor,
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(10.dp)),
+        )
+        Column(modifier = Modifier.padding(start = 12.dp)) {
+            Text(
+                text = song.title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = song.artist,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
 @Composable
 private fun QuickPickGrid(
     quickPicks: List<QuickPick>,
-    onIntent: (HomeIntent) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -235,7 +267,6 @@ private fun QuickPickGrid(
                 rowItems.forEach { item ->
                     QuickPickCard(
                         item = item,
-                        onIntent = onIntent,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -250,24 +281,13 @@ private fun QuickPickGrid(
 @Composable
 private fun QuickPickCard(
     item: QuickPick,
-    onIntent: (HomeIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier
             .height(56.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .clickable {
-                onIntent(
-                    HomeIntent.TrackClicked(
-                        title = item.title,
-                        subtitle = "Hızlı Seçim",
-                        startColor = item.artworkStartColor,
-                        endColor = item.artworkEndColor
-                    )
-                )
-            },
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Artwork(
@@ -289,7 +309,6 @@ private fun QuickPickCard(
     }
 }
 
-/** Bölüm başlığı; [trailingText] verilirse sağda vurgu rengiyle gösterilir (örn. "Tümü"). */
 @Composable
 private fun SectionHeader(
     title: String,
@@ -319,31 +338,16 @@ private fun SectionHeader(
     }
 }
 
-/** "Son çalınanlar" yatay scrollable kart listesi. */
 @Composable
 private fun RecentlyPlayedRow(
     items: List<RecentlyPlayed>,
-    onIntent: (HomeIntent) -> Unit,
 ) {
     LazyRow(
         contentPadding = PaddingValues(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         items(items, key = { it.id }) { item ->
-            Column(
-                modifier = Modifier
-                    .width(150.dp)
-                    .clickable {
-                        onIntent(
-                            HomeIntent.TrackClicked(
-                                title = item.title,
-                                subtitle = item.subtitle,
-                                startColor = item.artworkStartColor,
-                                endColor = item.artworkEndColor
-                            )
-                        )
-                    }
-            ) {
+            Column(modifier = Modifier.width(150.dp)) {
                 Artwork(
                     startColor = item.artworkStartColor,
                     endColor = item.artworkEndColor,
@@ -372,31 +376,16 @@ private fun RecentlyPlayedRow(
     }
 }
 
-/** "Senin için çalma listeleri" yatay scrollable büyük kart listesi. */
 @Composable
 private fun PlaylistsForYouRow(
     items: List<PlaylistForYou>,
-    onIntent: (HomeIntent) -> Unit,
 ) {
     LazyRow(
         contentPadding = PaddingValues(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         items(items, key = { it.id }) { item ->
-            Column(
-                modifier = Modifier
-                    .width(170.dp)
-                    .clickable {
-                        onIntent(
-                            HomeIntent.TrackClicked(
-                                title = item.title,
-                                subtitle = "Çalma Listesi",
-                                startColor = item.artworkStartColor,
-                                endColor = item.artworkEndColor
-                            )
-                        )
-                    }
-            ) {
+            Column(modifier = Modifier.width(170.dp)) {
                 Artwork(
                     startColor = item.artworkStartColor,
                     endColor = item.artworkEndColor,
@@ -418,11 +407,6 @@ private fun PlaylistsForYouRow(
     }
 }
 
-/**
- * Kapak görseli yer tutucusu: modeldeki ARGB renk çiftinden köşegen gradyan + hafif
- * radyal parlama çizer. Gerçek API görsel URL'si sağladığında bu composable görsel
- * yükleyiciyle değiştirilir.
- */
 @Composable
 private fun Artwork(
     startColor: Long,
@@ -443,6 +427,10 @@ private fun Artwork(
 private val previewState = HomeUiState(
     greeting = "İyi akşamlar",
     userInitials = "ZK",
+    songs = listOf(
+        HomeSong("s1", "Neon Tide", "Aurora Drift", 0xFF8B6FB8, 0xFF4A3D6B),
+        HomeSong("s2", "City Lights", "Aurora Drift", 0xFF4AC2A8, 0xFF1F6E5C),
+    ),
     quickPicks = listOf(
         QuickPick("qp-1", "Gece Sürüşü", 0xFF8B6FB8, 0xFF4A3D6B),
         QuickPick("qp-2", "Sabah Kahvesi", 0xFF7C83D9, 0xFF3E4486),
@@ -495,4 +483,3 @@ private object HomeIcons {
         ).build()
     }
 }
-

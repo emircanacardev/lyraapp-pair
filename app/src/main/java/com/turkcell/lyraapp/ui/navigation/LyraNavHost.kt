@@ -58,6 +58,7 @@ import com.turkcell.lyraapp.ui.library.create.CreatePlaylistRoute
 import com.turkcell.lyraapp.ui.library.detail.PlaylistDetailRoute
 import com.turkcell.lyraapp.ui.player.PlayerRoute
 import com.turkcell.lyraapp.ui.profile.ProfileRoute
+import com.turkcell.lyraapp.ui.recentlyplayed.RecentlyPlayedRoute
 import com.turkcell.lyraapp.ui.search.SearchRoute
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -160,7 +161,24 @@ fun LyraNavHost(
                 HomeRoute(
                     onNavigateToPlayer = { songId, title, artist, startColor, endColor ->
                         navController.navigate("player?songId=$songId&title=$title&artist=$artist&startColor=$startColor&endColor=$endColor")
-                    }
+                    },
+                    onNavigateToPlaylist = { playlistId ->
+                        navController.navigate(playlistDetailRoute(playlistId))
+                    },
+                    onNavigateToAllRecentlyPlayed = {
+                        navController.navigate(LyraDestination.AllRecentlyPlayed.route)
+                    },
+                    onNavigateToProfile = {
+                        navController.navigateToTab(LyraDestination.Profile)
+                    },
+                )
+            }
+            composable(LyraDestination.AllRecentlyPlayed.route) {
+                RecentlyPlayedRoute(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToPlayer = { songId, title, artist, startColor, endColor ->
+                        navController.navigate("player?songId=$songId&title=$title&artist=$artist&startColor=$startColor&endColor=$endColor")
+                    },
                 )
             }
             composable(LyraDestination.Search.route) { SearchRoute() }

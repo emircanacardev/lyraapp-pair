@@ -1,6 +1,7 @@
 package com.turkcell.lyraapp.data.home
 
 import com.turkcell.lyraapp.data.auth.AuthRepository
+import com.turkcell.lyraapp.data.auth.PlaylistDto
 import com.turkcell.lyraapp.data.songs.SongDto
 import com.turkcell.lyraapp.data.songs.SongsApi
 import kotlinx.coroutines.async
@@ -16,29 +17,44 @@ class DefaultHomeRepository @Inject constructor(
 
     override suspend fun getHomeFeed(): Result<HomeFeed> = runCatching {
         coroutineScope {
-            val songsDeferred          = async { songsApi.getSongs(limit = SONGS_PAGE_SIZE).data }
-            val recentlyPlayedDeferred = async { authRepository.getRecentlyPlayed(limit = 10) }
+            val songsDeferred           = async { songsApi.getSongs(limit = SONGS_PAGE_SIZE).data }
+            val playlistsDeferred       = async { authRepository.getUserPlaylists() }
+            val recentlyPlayedDeferred  = async { authRepository.getRecentlyPlayed(limit = 10) }
             val recommendationsDeferred = async { authRepository.getRecommendations(limit = 6) }
-            val forYouDeferred         = async { authRepository.getForYou(limit = 20) }
-            val userDeferred           = async { authRepository.getCurrentUser() }
+            val forYouDeferred          = async { authRepository.getForYou(limit = 20) }
+            val userDeferred            = async { authRepository.getCurrentUser() }
 
-            val songs         = songsDeferred.await().map { it.toHomeSong() }
+            val songs          = songsDeferred.await().map { it.toHomeSong() }
+            val playlists      = playlistsDeferred.await()
+                .getOrDefault(emptyList()).map { it.toFeaturedPlaylist() }
             val recentlyPlayed = recentlyPlayedDeferred.await()
                 .getOrDefault(emptyList()).map { it.toRecentlyPlayed() }
-            val quickPicks    = recommendationsDeferred.await()
-                .getOrDefault(emptyList()).map { it.toQuickPick() }
-            val forYou        = forYouDeferred.await()
+            val recommendations = recommendationsDeferred.await()
+                .getOrDefault(emptyList()).map { it.toRecommendation() }
+            val forYou         = forYouDeferred.await()
                 .getOrDefault(emptyList()).map { it.toForYouSong() }
-            val user          = userDeferred.await().getOrNull()
+            val user           = userDeferred.await().getOrNull()
 
             HomeFeed(
-                userInitials   = buildInitials(user?.firstName, user?.lastName),
-                songs          = songs,
-                quickPicks     = quickPicks,
-                recentlyPlayed = recentlyPlayed,
-                forYouSongs    = forYou,
+                userInitials    = buildInitials(user?.firstName, user?.lastName),
+                songs           = songs,
+                playlists       = playlists,
+                recommendations = recommendations,
+                recentlyPlayed  = recentlyPlayed,
+                forYouSongs     = forYou,
             )
         }
+    }
+
+    override suspend fun getRecentlyPlayed(): Result<List<RecentlyPlayed>> = runCatching {
+        authRepository.getRecentlyPlayed(limit = 10)
+            .getOrDefault(emptyList())
+            .map { it.toRecentlyPlayed() }
+    }
+
+    private fun PlaylistDto.toFeaturedPlaylist(): FeaturedPlaylist {
+        val (start, end) = artworkColorsFor(id)
+        return FeaturedPlaylist(id = id, name = name, description = description, artworkStartColor = start, artworkEndColor = end)
     }
 
     private fun SongDto.toHomeSong(): HomeSong {
@@ -51,9 +67,9 @@ class DefaultHomeRepository @Inject constructor(
         return RecentlyPlayed(id = id, title = title, subtitle = artist, artworkStartColor = start, artworkEndColor = end)
     }
 
-    private fun SongDto.toQuickPick(): QuickPick {
+    private fun SongDto.toRecommendation(): Recommendation {
         val (start, end) = artworkColorsFor(id)
-        return QuickPick(id = id, title = title, artworkStartColor = start, artworkEndColor = end)
+        return Recommendation(id = id, title = title, artist = artist, artworkStartColor = start, artworkEndColor = end)
     }
 
     private fun SongDto.toForYouSong(): ForYouSong {

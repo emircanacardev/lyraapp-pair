@@ -32,9 +32,13 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,9 +53,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.turkcell.lyraapp.data.home.FeaturedPlaylist
 import com.turkcell.lyraapp.data.home.ForYouSong
 import com.turkcell.lyraapp.data.home.HomeSong
-import com.turkcell.lyraapp.data.home.QuickPick
+import com.turkcell.lyraapp.data.home.Recommendation
 import com.turkcell.lyraapp.data.home.RecentlyPlayed
 import com.turkcell.lyraapp.ui.icons.LyraIcons
 import com.turkcell.lyraapp.ui.theme.LyraAppTheme
@@ -59,11 +64,25 @@ import com.turkcell.lyraapp.ui.theme.LyraAppTheme
 @Composable
 fun HomeRoute(
     onNavigateToPlayer: (songId: String, title: String, artist: String, startColor: Long, endColor: Long) -> Unit,
+    onNavigateToPlaylist: (playlistId: String) -> Unit,
+    onNavigateToAllRecentlyPlayed: () -> Unit,
+    onNavigateToProfile: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.onIntent(HomeIntent.RefreshRecentlyPlayed)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.effect.collect { effect ->
@@ -77,15 +96,16 @@ fun HomeRoute(
                         viewModel.onIntent(HomeIntent.Retry)
                     }
                 }
-                is HomeEffect.NavigateToPlayer -> {
-                    onNavigateToPlayer(
-                        effect.songId,
-                        effect.title,
-                        effect.artist,
-                        effect.startColor,
-                        effect.endColor,
-                    )
-                }
+                is HomeEffect.NavigateToPlayer -> onNavigateToPlayer(
+                    effect.songId,
+                    effect.title,
+                    effect.artist,
+                    effect.startColor,
+                    effect.endColor,
+                )
+                is HomeEffect.NavigateToPlaylist -> onNavigateToPlaylist(effect.playlistId)
+                is HomeEffect.NavigateToAllRecentlyPlayed -> onNavigateToAllRecentlyPlayed()
+                is HomeEffect.NavigateToProfile -> onNavigateToProfile()
             }
         }
     }
@@ -111,7 +131,7 @@ fun HomeScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { innerPadding ->
-        if (state.isLoading && state.quickPicks.isEmpty()) {
+        if (state.isLoading && state.playlists.isEmpty() && state.recentlyPlayed.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -133,23 +153,58 @@ fun HomeScreen(
                         greeting = state.greeting,
                         userInitials = state.userInitials,
                         isDarkTheme = state.isDarkTheme,
-                        onThemeToggle = { onIntent(HomeIntent.ToggleTheme) }
+                        onThemeToggle = { onIntent(HomeIntent.ToggleTheme) },
+                        onAvatarClick = { onIntent(HomeIntent.AvatarClicked) },
                     )
                 }
-                if (state.songs.isNotEmpty()) {
-                    item { SectionHeader(title = "Şarkılar") }
-                    items(state.songs, key = { it.id }) { song ->
-                        SongRow(
-                            song = song,
-                            onClick = { onIntent(HomeIntent.SongSelected(song)) },
+
+                if (state.playlists.isNotEmpty()) {
+                    item { SectionHeader(title = "Çalma Listelerim") }
+                    item {
+                        PlaylistsRow(
+                            playlists = state.playlists,
+                            onPlaylistClick = { id -> onIntent(HomeIntent.PlaylistSelected(id)) },
                         )
                     }
                 }
-                item { QuickPickGrid(quickPicks = state.quickPicks) }
-                item { SectionHeader(title = "Son çalınanlar", trailingText = "Tümü") }
-                item { RecentlyPlayedRow(items = state.recentlyPlayed) }
-                item { SectionHeader(title = "Senin İçin") }
-                item { ForYouSongsRow(items = state.forYouSongs) }
+
+                item {
+                    SectionHeader(
+                        title = "Son Çalınanlar",
+                        trailingText = if (state.recentlyPlayed.isNotEmpty()) "Tümü" else null,
+                        onTrailingClick = if (state.recentlyPlayed.isNotEmpty()) {
+                            { onIntent(HomeIntent.ShowAllRecentlyPlayed) }
+                        } else null,
+                    )
+                }
+                item {
+                    RecentlyPlayedRow(
+                        items = state.recentlyPlayed,
+                        onItemClick = { song -> onIntent(HomeIntent.RecentlyPlayedSelected(song)) },
+                    )
+                }
+
+                if (state.forYouSongs.isNotEmpty()) {
+                    item { SectionHeader(title = "Senin İçin") }
+                    item {
+                        ForYouSongsRow(
+                            items = state.forYouSongs,
+                            onItemClick = { song -> onIntent(HomeIntent.ForYouSongSelected(song)) },
+                        )
+                    }
+                }
+
+                if (state.recommendations.isNotEmpty()) {
+                    item { SectionHeader(title = "Öneriler") }
+                    item {
+                        RecommendationsGrid(
+                            recommendations = state.recommendations,
+                            onItemClick = { song -> onIntent(HomeIntent.RecommendationSelected(song)) },
+                        )
+                    }
+                }
+
+                item { Spacer(Modifier.height(8.dp)) }
             }
         }
     }
@@ -161,6 +216,7 @@ private fun HomeHeader(
     userInitials: String,
     isDarkTheme: Boolean,
     onThemeToggle: () -> Unit,
+    onAvatarClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -191,17 +247,18 @@ private fun HomeHeader(
             )
         }
         Spacer(Modifier.width(8.dp))
-        UserAvatar(initials = userInitials)
+        UserAvatar(initials = userInitials, onClick = onAvatarClick)
     }
 }
 
 @Composable
-private fun UserAvatar(initials: String) {
+private fun UserAvatar(initials: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .size(40.dp)
             .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.primaryContainer),
+            .background(MaterialTheme.colorScheme.primaryContainer)
+            .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -214,105 +271,10 @@ private fun UserAvatar(initials: String) {
 }
 
 @Composable
-private fun SongRow(
-    song: HomeSong,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Artwork(
-            startColor = song.artworkStartColor,
-            endColor = song.artworkEndColor,
-            modifier = Modifier
-                .size(48.dp)
-                .clip(RoundedCornerShape(10.dp)),
-        )
-        Column(modifier = Modifier.padding(start = 12.dp)) {
-            Text(
-                text = song.title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = song.artist,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
-
-@Composable
-private fun QuickPickGrid(
-    quickPicks: List<QuickPick>,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        quickPicks.chunked(2).forEach { rowItems ->
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                rowItems.forEach { item ->
-                    QuickPickCard(
-                        item = item,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                if (rowItems.size == 1) {
-                    Spacer(Modifier.weight(1f))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun QuickPickCard(
-    item: QuickPick,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier
-            .height(56.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Artwork(
-            startColor = item.artworkStartColor,
-            endColor = item.artworkEndColor,
-            modifier = Modifier
-                .width(56.dp)
-                .fillMaxHeight(),
-        )
-        Text(
-            text = item.title,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 10.dp),
-        )
-    }
-}
-
-@Composable
 private fun SectionHeader(
     title: String,
     trailingText: String? = null,
+    onTrailingClick: (() -> Unit)? = null,
 ) {
     Row(
         modifier = Modifier
@@ -333,6 +295,85 @@ private fun SectionHeader(
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary,
+                modifier = if (onTrailingClick != null) {
+                    Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .clickable(onClick = onTrailingClick)
+                        .padding(horizontal = 6.dp, vertical = 4.dp)
+                } else Modifier,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlaylistsRow(
+    playlists: List<FeaturedPlaylist>,
+    onPlaylistClick: (String) -> Unit,
+) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 20.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        items(playlists, key = { it.id }) { playlist ->
+            PlaylistCard(
+                playlist = playlist,
+                onClick = { onPlaylistClick(playlist.id) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlaylistCard(
+    playlist: FeaturedPlaylist,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .width(160.dp)
+            .clickable(onClick = onClick),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(160.dp)
+                .clip(RoundedCornerShape(16.dp)),
+        ) {
+            Artwork(
+                startColor = playlist.artworkStartColor,
+                endColor = playlist.artworkEndColor,
+                modifier = Modifier.fillMaxSize(),
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f))
+                        )
+                    )
+                    .padding(horizontal = 10.dp, vertical = 10.dp),
+            ) {
+                Text(
+                    text = playlist.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        if (!playlist.description.isNullOrBlank()) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = playlist.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -341,13 +382,34 @@ private fun SectionHeader(
 @Composable
 private fun RecentlyPlayedRow(
     items: List<RecentlyPlayed>,
+    onItemClick: (RecentlyPlayed) -> Unit,
 ) {
+    if (items.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .height(80.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "Henüz şarkı çalmadınız",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        return
+    }
     LazyRow(
         contentPadding = PaddingValues(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         items(items, key = { it.id }) { item ->
-            Column(modifier = Modifier.width(150.dp)) {
+            Column(
+                modifier = Modifier
+                    .width(150.dp)
+                    .clickable { onItemClick(item) },
+            ) {
                 Artwork(
                     startColor = item.artworkStartColor,
                     endColor = item.artworkEndColor,
@@ -379,13 +441,18 @@ private fun RecentlyPlayedRow(
 @Composable
 private fun ForYouSongsRow(
     items: List<ForYouSong>,
+    onItemClick: (ForYouSong) -> Unit,
 ) {
     LazyRow(
         contentPadding = PaddingValues(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         items(items, key = { it.id }) { item ->
-            Column(modifier = Modifier.width(170.dp)) {
+            Column(
+                modifier = Modifier
+                    .width(170.dp)
+                    .clickable { onItemClick(item) },
+            ) {
                 Artwork(
                     startColor = item.artworkStartColor,
                     endColor = item.artworkEndColor,
@@ -415,6 +482,78 @@ private fun ForYouSongsRow(
 }
 
 @Composable
+private fun RecommendationsGrid(
+    recommendations: List<Recommendation>,
+    onItemClick: (Recommendation) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        recommendations.chunked(2).forEach { rowItems ->
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                rowItems.forEach { item ->
+                    RecommendationCard(
+                        item = item,
+                        onClick = { onItemClick(item) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                if (rowItems.size == 1) {
+                    Spacer(Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecommendationCard(
+    item: Recommendation,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .height(56.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .clickable(onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Artwork(
+            startColor = item.artworkStartColor,
+            endColor = item.artworkEndColor,
+            modifier = Modifier
+                .width(56.dp)
+                .fillMaxHeight(),
+        )
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp),
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text(
+                text = item.title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = item.artist,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
 private fun Artwork(
     startColor: Long,
     endColor: Long,
@@ -434,17 +573,10 @@ private fun Artwork(
 private val previewState = HomeUiState(
     greeting = "İyi akşamlar",
     userInitials = "ZK",
-    songs = listOf(
-        HomeSong("s1", "Neon Tide", "Aurora Drift", 0xFF8B6FB8, 0xFF4A3D6B),
-        HomeSong("s2", "City Lights", "Aurora Drift", 0xFF4AC2A8, 0xFF1F6E5C),
-    ),
-    quickPicks = listOf(
-        QuickPick("qp-1", "Gece Sürüşü", 0xFF8B6FB8, 0xFF4A3D6B),
-        QuickPick("qp-2", "Sabah Kahvesi", 0xFF7C83D9, 0xFF3E4486),
-        QuickPick("qp-3", "Neon Sokaklar", 0xFFD98E4A, 0xFF8A5526),
-        QuickPick("qp-4", "Odaklan", 0xFF4AC2A8, 0xFF1F6E5C),
-        QuickPick("qp-5", "Derin Mavi", 0xFF6FBF5A, 0xFF356B2A),
-        QuickPick("qp-6", "Yaz Anıları", 0xFF5AAFC9, 0xFF2A5F73),
+    playlists = listOf(
+        FeaturedPlaylist("pl-1", "Gece Sürüşü", "Sakin melodiler", 0xFF8B6FB8, 0xFF4A3D6B),
+        FeaturedPlaylist("pl-2", "Sabah Enerjisi", null, 0xFF4AC2A8, 0xFF1F6E5C),
+        FeaturedPlaylist("pl-3", "Focus Mode", "Odaklanma müziği", 0xFFD98E4A, 0xFF8A5526),
     ),
     recentlyPlayed = listOf(
         RecentlyPlayed("rp-1", "Neon Sokaklar", "Şehir Işıkları", 0xFFD98E4A, 0xFF8A5526),
@@ -455,6 +587,12 @@ private val previewState = HomeUiState(
         ForYouSong("s3", "Haftalık Keşif", "Aurora Drift", 0xFF9B7FC4, 0xFF5A4480),
         ForYouSong("s4", "Sakin Akşamlar", "City Pulse", 0xFF6B5FB8, 0xFF3A3270),
         ForYouSong("s5", "Enerji Ver", "Neon Wave", 0xFF3FAE9C, 0xFF1E5D52),
+    ),
+    recommendations = listOf(
+        Recommendation("qp-1", "Gece Sürüşü", "Aurora Drift", 0xFF8B6FB8, 0xFF4A3D6B),
+        Recommendation("qp-2", "Sabah Kahvesi", "City Pulse", 0xFF7C83D9, 0xFF3E4486),
+        Recommendation("qp-3", "Neon Sokaklar", "Neon Wave", 0xFFD98E4A, 0xFF8A5526),
+        Recommendation("qp-4", "Odaklan", "Aurora Drift", 0xFF4AC2A8, 0xFF1F6E5C),
     ),
 )
 

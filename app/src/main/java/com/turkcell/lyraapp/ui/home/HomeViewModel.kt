@@ -37,17 +37,64 @@ class HomeViewModel @Inject constructor(
         when (intent) {
             is HomeIntent.Retry -> loadFeed()
             is HomeIntent.ToggleTheme -> toggleTheme()
-            is HomeIntent.SongSelected -> viewModelScope.launch {
-                _effect.send(
-                    HomeEffect.NavigateToPlayer(
-                        songId = intent.song.id,
-                        title = intent.song.title,
-                        artist = intent.song.artist,
-                        startColor = intent.song.artworkStartColor,
-                        endColor = intent.song.artworkEndColor,
-                    )
-                )
+            is HomeIntent.SongSelected -> navigateToPlayer(
+                songId = intent.song.id,
+                title = intent.song.title,
+                artist = intent.song.artist,
+                startColor = intent.song.artworkStartColor,
+                endColor = intent.song.artworkEndColor,
+            )
+            is HomeIntent.RecentlyPlayedSelected -> navigateToPlayer(
+                songId = intent.song.id,
+                title = intent.song.title,
+                artist = intent.song.subtitle,
+                startColor = intent.song.artworkStartColor,
+                endColor = intent.song.artworkEndColor,
+            )
+            is HomeIntent.ForYouSongSelected -> navigateToPlayer(
+                songId = intent.song.id,
+                title = intent.song.title,
+                artist = intent.song.artist,
+                startColor = intent.song.artworkStartColor,
+                endColor = intent.song.artworkEndColor,
+            )
+            is HomeIntent.RecommendationSelected -> navigateToPlayer(
+                songId = intent.song.id,
+                title = intent.song.title,
+                artist = intent.song.artist,
+                startColor = intent.song.artworkStartColor,
+                endColor = intent.song.artworkEndColor,
+            )
+            is HomeIntent.PlaylistSelected -> viewModelScope.launch {
+                _effect.send(HomeEffect.NavigateToPlaylist(intent.playlistId))
             }
+            is HomeIntent.ShowAllRecentlyPlayed -> viewModelScope.launch {
+                _effect.send(HomeEffect.NavigateToAllRecentlyPlayed)
+            }
+            is HomeIntent.AvatarClicked -> viewModelScope.launch {
+                _effect.send(HomeEffect.NavigateToProfile)
+            }
+            is HomeIntent.RefreshRecentlyPlayed -> refreshRecentlyPlayed()
+        }
+    }
+
+    private fun navigateToPlayer(
+        songId: String,
+        title: String,
+        artist: String,
+        startColor: Long,
+        endColor: Long,
+    ) {
+        viewModelScope.launch {
+            _effect.send(
+                HomeEffect.NavigateToPlayer(
+                    songId = songId,
+                    title = title,
+                    artist = artist,
+                    startColor = startColor,
+                    endColor = endColor,
+                )
+            )
         }
     }
 
@@ -75,16 +122,26 @@ class HomeViewModel @Inject constructor(
                 .onSuccess { feed ->
                     _uiState.update {
                         it.copy(
-                            userInitials = feed.userInitials,
-                            songs = feed.songs,
-                            quickPicks = feed.quickPicks,
-                            recentlyPlayed = feed.recentlyPlayed,
-                            forYouSongs = feed.forYouSongs,
+                            userInitials    = feed.userInitials,
+                            songs           = feed.songs,
+                            playlists       = feed.playlists,
+                            recommendations = feed.recommendations,
+                            recentlyPlayed  = feed.recentlyPlayed,
+                            forYouSongs     = feed.forYouSongs,
                         )
                     }
                 }
                 .onFailure { error ->
                     _effect.send(HomeEffect.ShowError(error.message ?: "Ana sayfa yüklenemedi."))
+                }
+        }
+    }
+
+    private fun refreshRecentlyPlayed() {
+        viewModelScope.launch {
+            homeRepository.getRecentlyPlayed()
+                .onSuccess { songs ->
+                    _uiState.update { it.copy(recentlyPlayed = songs) }
                 }
         }
     }

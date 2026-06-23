@@ -8,18 +8,28 @@ data class HomeSong(
     val artworkEndColor: Long,
 )
 
+data class FeaturedPlaylist(
+    val id: String,
+    val name: String,
+    val description: String?,
+    val artworkStartColor: Long,
+    val artworkEndColor: Long,
+)
+
 data class HomeFeed(
     val userInitials: String,
     val songs: List<HomeSong>,
-    val quickPicks: List<QuickPick>,
+    val playlists: List<FeaturedPlaylist>,
+    val recommendations: List<Recommendation>,
     val recentlyPlayed: List<RecentlyPlayed>,
     val forYouSongs: List<ForYouSong>,
 )
 
-/** "Ne dinlemek istersin?" grid'indeki hızlı seçim öğesi. */
-data class QuickPick(
+/** "Öneriler" grid'indeki öneri şarkısı. */
+data class Recommendation(
     val id: String,
     val title: String,
+    val artist: String,
     val artworkStartColor: Long,
     val artworkEndColor: Long,
 )

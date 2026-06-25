@@ -10,24 +10,29 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.turkcell.lyraapp.data.auth.AuthRepository
+import com.turkcell.lyraapp.data.download.DownloadRepository
 import com.turkcell.lyraapp.data.player.PlaybackManager
 import com.turkcell.lyraapp.data.player.PlayingTrack
 import com.turkcell.lyraapp.data.player.PlayerRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.io.File
 import javax.inject.Inject
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     @ApplicationContext context: Context,
     private val playerRepository: PlayerRepository,
+    private val downloadRepository: DownloadRepository,
     private val playbackManager: PlaybackManager,
     private val authRepository: AuthRepository,
     savedStateHandle: SavedStateHandle,
@@ -53,6 +58,9 @@ class PlayerViewModel @Inject constructor(
         )
     )
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
+
+    private val _effect = Channel<PlayerEffect>(Channel.BUFFERED)
+    val effect = _effect.receiveAsFlow()
 
     private val player: ExoPlayer = ExoPlayer.Builder(context).build()
 
@@ -84,7 +92,7 @@ class PlayerViewModel @Inject constructor(
                 it.copy(
                     isLoading = false,
                     isBuffering = false,
-                    errorMessage = error.localizedMessage ?: "Şarkı oynatılamadı.",
+                    errorMessage = error.localizedMessage ?: "Sarki oynatılamadi.",
                 )
             }
         }
@@ -101,6 +109,7 @@ class PlayerViewModel @Inject constructor(
             )
         )
         player.addListener(listener)
+        checkDownloadStatus()
         loadAndPlay()
         observePosition()
     }
@@ -121,6 +130,30 @@ class PlayerViewModel @Inject constructor(
                 player.seekTo(target)
             }
             PlayerIntent.Retry -> loadAndPlay()
+            PlayerIntent.DownloadSong -> downloadSong()
+        }
+    }
+
+    private fun checkDownloadStatus() {
+        viewModelScope.launch {
+            val downloaded = downloadRepository.isDownloaded(songId)
+            _uiState.update { it.copy(isDownloaded = downloaded) }
+        }
+    }
+
+    private fun downloadSong() {
+        if (_uiState.value.isDownloaded || _uiState.value.isDownloading) return
+        _uiState.update { it.copy(isDownloading = true) }
+        viewModelScope.launch {
+            downloadRepository.downloadSong(songId, title, artist)
+                .onSuccess {
+                    _uiState.update { it.copy(isDownloaded = true, isDownloading = false) }
+                    _effect.send(PlayerEffect.ShowMessage("Sarki indirildi"))
+                }
+                .onFailure { error ->
+                    _uiState.update { it.copy(isDownloading = false) }
+                    _effect.send(PlayerEffect.ShowMessage(error.message ?: "Indirme basarisiz oldu"))
+                }
         }
     }
 
@@ -133,20 +166,27 @@ class PlayerViewModel @Inject constructor(
     private fun loadAndPlay() {
         _uiState.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
-            playerRepository.getStreamUrl(songId)
-                .onSuccess { url ->
-                    player.setMediaItem(MediaItem.fromUri(Uri.parse(url)))
-                    player.prepare()
-                    player.playWhenReady = true
-                }
-                .onFailure { error ->
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = error.message ?: "Stream adresi alınamadı.",
-                        )
+            val localPath = downloadRepository.getLocalFilePath(songId)
+            if (localPath != null) {
+                player.setMediaItem(MediaItem.fromUri(Uri.fromFile(File(localPath))))
+                player.prepare()
+                player.playWhenReady = true
+            } else {
+                playerRepository.getStreamUrl(songId)
+                    .onSuccess { url ->
+                        player.setMediaItem(MediaItem.fromUri(Uri.parse(url)))
+                        player.prepare()
+                        player.playWhenReady = true
                     }
-                }
+                    .onFailure { error ->
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                errorMessage = error.message ?: "Stream adresi alinamadi.",
+                            )
+                        }
+                    }
+            }
         }
     }
 

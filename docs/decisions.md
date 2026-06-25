@@ -206,6 +206,48 @@
   şarkı listesi döndüren endpoint'ler mevcut `data.songs.SongDto`'yu yeniden kullanır.
 
 
+### Offline Muzik Indirme
+
+- Karar: Room veritabani + OkHttp akisi + yerel dosya oncelikli oynatma.
+
+- Son Guncelleme Tarihi: 25.06.2026
+
+- Uygulama:
+  - `data/download/DownloadedSong.kt` — Room `@Entity` (songId, title, artist, localFilePath, downloadedAt),
+    `@Dao` (getDownload, insertDownload, deleteDownload, observeAll) ve `@Database` (`LyraDatabase`) tek
+    dosyada tanimlanir.
+  - `data/download/DownloadRepository.kt` — `downloadSong`, `isDownloaded`, `getLocalFilePath`,
+    `deleteDownload`, `observeDownloads` sozlesmesi.
+  - `data/download/DefaultDownloadRepository.kt` — `PlayerRepository.getStreamUrl()` ile imzali URL
+    alinir; `OkHttpClient` ile ses dosyasi `getExternalFilesDir(DIRECTORY_MUSIC)` altina indirilir;
+    indirme basarili olursa `DownloadedSongDao.insertDownload()` ile meta-veri kayit edilir.
+    Tum IO islemi `withContext(Dispatchers.IO)` icinde calisir.
+  - `di/DownloadModule.kt` — Hilt `@Singleton`: `LyraDatabase`, `DownloadedSongDao` ve
+    `DownloadRepository → DefaultDownloadRepository` baglama.
+  - `ui/player/PlayerContract.kt` — `PlayerUiState`'e `isDownloaded: Boolean` ve `isDownloading: Boolean`
+    alanlari eklendi; `PlayerIntent.DownloadSong` intenti ve `PlayerEffect.ShowMessage` effecti eklendi.
+  - `ui/player/PlayerViewModel.kt` — `DownloadRepository` inject edilir. `init` bloğunda
+    `checkDownloadStatus()` cagrilir. `loadAndPlay()` once `getLocalFilePath()` ile yerel dosyayi
+    kontrol eder; varsa `Uri.fromFile()` ile offline oynatir, yoksa stream URL'ye duser.
+    `DownloadSong` intentinde `downloadSong()` coroutine'i baslatilir; sonuc `PlayerEffect.ShowMessage`
+    ile kullaniciya bildirilir.
+  - `ui/player/PlayerScreen.kt` — Baslik satirinin sag tarafina indir butonu eklendi: indirme
+    baslamadan once beyaz ikon, indirilirken `CircularProgressIndicator`, indirildikten sonra
+    pembe renkte tamamlanmis ikon. `PlayerEffect` `LaunchedEffect` icinde dinlenir ve `SnackbarHost`
+    ile gosterilir.
+
+- Sebep: Kullanici, onceden indirdigi sarkiyi internet baglantisi olmadan cihazin kendi depolamasindan
+  calar. Yaklasim secimlerinin gerekceleri:
+  - **OkHttp** (yeni bagimliliksiz): Proje zaten OkHttp kullaniyor; `DownloadManager` sistemi
+    daha az kontrol saglar ve progress takibi icin ek etkilesim gerektirir.
+  - **Room** (yeni bagimlililik: 2.7.1): Indirilen sarkilarin meta-verisini (yol, baslik) kalici
+    tutmak icin gereklidir; uygulama yeniden baslatildiginda dosya varligi dogrulanir.
+  - **app-specific external storage** (`getExternalFilesDir`): API 19+'ta ek izin gerektirmez;
+    uygulama kaldirildiginda dosyalar otomatik silinir.
+  - **Yerel dosya onceligi**: `PlayerViewModel.loadAndPlay()` once `getLocalFilePath()` sorgular;
+    Stream URL yalnizca yerel dosya yoksa istenir. Bu sayede offline oynatma seffaftir ve ekstra
+    bir UI dallanmasi gerektirmez.
+
 ### Bildirim Paneli Medya Mini Player
 
 - Karar: `Service` + `Notification.MediaStyle` + `MediaSession` — MVI dışı bileşen.

@@ -26,9 +26,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -70,6 +73,15 @@ fun PlayerRoute(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) {
+        viewModel.effect.collect { effect ->
+            when (effect) {
+                is PlayerEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.message)
+            }
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -93,6 +105,7 @@ fun PlayerRoute(
         state = uiState,
         onIntent = viewModel::onIntent,
         onNavigateBack = onNavigateBack,
+        snackbarHostState = snackbarHostState,
         modifier = modifier,
     )
 }
@@ -102,6 +115,7 @@ fun PlayerScreen(
     state: PlayerUiState,
     onIntent: (PlayerIntent) -> Unit,
     onNavigateBack: () -> Unit,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     modifier: Modifier = Modifier,
 ) {
     val backgroundBrush = Brush.verticalGradient(
@@ -115,7 +129,8 @@ fun PlayerScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = Color.Transparent,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0)
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -153,12 +168,40 @@ fun PlayerScreen(
                             letterSpacing = 1.5.sp
                         )
                     }
-                    IconButton(onClick = { }) {
-                        Icon(
-                            imageVector = PlayerIcons.MoreVert,
-                            contentDescription = "Daha Fazla",
-                            tint = Color.White
-                        )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier.size(48.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            when {
+                                state.isDownloading -> CircularProgressIndicator(
+                                    modifier = Modifier.size(22.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp,
+                                )
+                                state.isDownloaded -> Icon(
+                                    imageVector = LyraIcons.Download,
+                                    contentDescription = "Indirildi",
+                                    tint = Color(0xFFF5B2C3),
+                                    modifier = Modifier.size(24.dp),
+                                )
+                                else -> IconButton(onClick = { onIntent(PlayerIntent.DownloadSong) }) {
+                                    Icon(
+                                        imageVector = LyraIcons.Download,
+                                        contentDescription = "Indir",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(24.dp),
+                                    )
+                                }
+                            }
+                        }
+                        IconButton(onClick = { }) {
+                            Icon(
+                                imageVector = PlayerIcons.MoreVert,
+                                contentDescription = "Daha Fazla",
+                                tint = Color.White
+                            )
+                        }
                     }
                 }
 

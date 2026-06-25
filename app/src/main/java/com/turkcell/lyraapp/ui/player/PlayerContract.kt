@@ -12,6 +12,8 @@ data class PlayerUiState(
     val positionMs: Long = 0L,
     val durationMs: Long = 0L,
     val errorMessage: String? = null,
+    val isDownloaded: Boolean = false,
+    val isDownloading: Boolean = false,
 )
 
 sealed interface PlayerIntent {
@@ -21,4 +23,9 @@ sealed interface PlayerIntent {
     data object SeekBackward : PlayerIntent
     data class SeekTo(val positionMs: Long) : PlayerIntent
     data object Retry : PlayerIntent
+    data object DownloadSong : PlayerIntent
+}
+
+sealed interface PlayerEffect {
+    data class ShowMessage(val message: String) : PlayerEffect
 }

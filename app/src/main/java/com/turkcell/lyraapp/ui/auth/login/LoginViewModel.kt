@@ -35,9 +35,23 @@ class LoginViewModel @Inject constructor(
 
     private fun checkExistingSession() {
         viewModelScope.launch {
-            if (tokenStorage.getRefreshToken() != null) {
-                _effect.send(LoginEffect.NavigateToHome)
+            val refreshToken = tokenStorage.getRefreshToken()
+            if (refreshToken == null) {
+                _uiState.update { it.copy(isCheckingSession = false) }
+                return@launch
             }
+            // Proactively refresh so the Home screen starts with a valid access token
+            authRepository.refreshToken(refreshToken)
+                .onSuccess { tokens ->
+                    tokenStorage.saveAccessToken(tokens.accessToken)
+                    tokenStorage.saveRefreshToken(tokens.refreshToken)
+                    _effect.send(LoginEffect.NavigateToHome)
+                }
+                .onFailure {
+                    // Refresh token expired or revoked — show login form
+                    tokenStorage.clearTokens()
+                    _uiState.update { it.copy(isCheckingSession = false) }
+                }
         }
     }
 

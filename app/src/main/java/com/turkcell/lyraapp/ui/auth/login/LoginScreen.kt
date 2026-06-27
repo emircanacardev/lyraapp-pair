@@ -101,6 +101,16 @@ fun LoginScreen(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
+        if (state.isCheckingSession) {
+            // Blank screen while the startup token refresh is in flight —
+            // prevents the login form from flashing before Home navigation
+            Box(
+                modifier = Modifier.fillMaxSize().padding(innerPadding),
+                contentAlignment = Alignment.Center,
+            ) {}
+            return@Scaffold
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()

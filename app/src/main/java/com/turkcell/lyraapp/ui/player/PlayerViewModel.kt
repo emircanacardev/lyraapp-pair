@@ -1,6 +1,5 @@
 package com.turkcell.lyraapp.ui.player
 
-import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -8,13 +7,11 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
 import com.turkcell.lyraapp.data.download.DownloadRepository
 import com.turkcell.lyraapp.data.player.PlaybackManager
 import com.turkcell.lyraapp.data.player.PlayingTrack
 import com.turkcell.lyraapp.data.player.PlayerRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,7 +26,6 @@ import javax.inject.Inject
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
-    @ApplicationContext context: Context,
     private val playerRepository: PlayerRepository,
     private val downloadRepository: DownloadRepository,
     private val playbackManager: PlaybackManager,
@@ -43,6 +39,9 @@ class PlayerViewModel @Inject constructor(
     private val artist: String = savedStateHandle.get<String>(ARG_ARTIST).orEmpty()
     private val startColor: Long = savedStateHandle[ARG_START_COLOR] ?: 0xFF8B6FB8L
     private val endColor: Long = savedStateHandle[ARG_END_COLOR] ?: 0xFF4A3D6BL
+
+    // Use the singleton player — not owned by this ViewModel
+    private val player = playbackManager.player
 
     private val _uiState = MutableStateFlow(
         PlayerUiState(
@@ -58,12 +57,9 @@ class PlayerViewModel @Inject constructor(
     private val _effect = Channel<PlayerEffect>(Channel.BUFFERED)
     val effect = _effect.receiveAsFlow()
 
-    private val player: ExoPlayer = ExoPlayer.Builder(context).build()
-
     private val listener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             _uiState.update { it.copy(isPlaying = isPlaying) }
-            playbackManager.setPlaying(isPlaying)
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
@@ -91,6 +87,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     init {
+        val previousSongId = playbackManager.playingTrack.value?.id
         playbackManager.setTrack(
             PlayingTrack(
                 id = songId,
@@ -102,7 +99,7 @@ class PlayerViewModel @Inject constructor(
         )
         player.addListener(listener)
         checkDownloadStatus()
-        loadAndPlay()
+        loadAndPlay(previousSongId)
         observePosition()
     }
 
@@ -155,7 +152,24 @@ class PlayerViewModel @Inject constructor(
         player.seekTo(target)
     }
 
-    private fun loadAndPlay() {
+    private fun loadAndPlay(previousSongId: String? = null) {
+        // Same song already loaded in ExoPlayer — just sync UI, don't restart
+        val alreadyPlaying = previousSongId == songId &&
+            player.playbackState != Player.STATE_IDLE &&
+            player.playbackState != Player.STATE_ENDED
+
+        if (alreadyPlaying) {
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    isPlaying = player.isPlaying,
+                    positionMs = player.currentPosition.coerceAtLeast(0L),
+                    durationMs = player.duration.coerceAtLeast(0L),
+                )
+            }
+            return
+        }
+
         _uiState.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             val localPath = downloadRepository.getLocalFilePath(songId)
@@ -187,13 +201,7 @@ class PlayerViewModel @Inject constructor(
             while (isActive) {
                 val positionMs = player.currentPosition.coerceAtLeast(0L)
                 val durationMs = player.duration.coerceAtLeast(0L)
-                _uiState.update {
-                    it.copy(
-                        positionMs = positionMs,
-                        durationMs = durationMs,
-                    )
-                }
-                playbackManager.updateProgress(positionMs, durationMs)
+                _uiState.update { it.copy(positionMs = positionMs, durationMs = durationMs) }
                 delay(POSITION_POLL_MS)
             }
         }
@@ -201,7 +209,7 @@ class PlayerViewModel @Inject constructor(
 
     override fun onCleared() {
         player.removeListener(listener)
-        player.release()
+        // Don't release — PlaybackManager owns the player, music continues in background
     }
 
     companion object {

@@ -17,6 +17,8 @@ data class LoginUiState(
     val isOtpSent: Boolean = false,
     val isLoading: Boolean = false,
     val isActionEnabled: Boolean = false,
+    // True while the startup session check is in progress — hides the login form
+    val isCheckingSession: Boolean = true,
 )
 
 /**

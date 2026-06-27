@@ -1,6 +1,7 @@
 package com.turkcell.lyraapp.data.network
 
-import com.turkcell.lyraapp.data.auth.SessionManager
+import com.turkcell.lyraapp.data.auth.TokenStorage
+import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
 import okhttp3.Response
 import javax.inject.Inject
@@ -8,11 +9,10 @@ import javax.inject.Singleton
 
 @Singleton
 class AuthInterceptor @Inject constructor(
-    private val sessionManager: SessionManager
+    private val tokenStorage: TokenStorage
 ) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
-        val token = sessionManager.getAccessToken()
-        android.util.Log.d("AuthInterceptor", "Token: $token")
+        val token = runBlocking { tokenStorage.getAccessToken() }
         val request = chain.request()
         return if (token != null) {
             val authenticatedRequest = request.newBuilder()

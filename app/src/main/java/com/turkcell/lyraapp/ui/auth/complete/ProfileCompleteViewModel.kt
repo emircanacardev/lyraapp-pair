@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.turkcell.lyraapp.data.auth.AuthRepository
 import com.turkcell.lyraapp.data.auth.SessionManager
+import com.turkcell.lyraapp.data.auth.TokenStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -19,6 +20,7 @@ import javax.inject.Inject
 class ProfileCompleteViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val sessionManager: SessionManager,
+    private val tokenStorage: TokenStorage,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileCompleteUiState())
@@ -70,6 +72,7 @@ class ProfileCompleteViewModel @Inject constructor(
     private fun backToLogin() {
         viewModelScope.launch {
             sessionManager.clear()
+            tokenStorage.clearTokens()
             _effect.send(ProfileCompleteEffect.NavigateToLogin)
         }
     }

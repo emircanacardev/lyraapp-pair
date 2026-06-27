@@ -3,6 +3,8 @@ package com.turkcell.lyraapp.ui.auth.login
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.turkcell.lyraapp.data.auth.AuthRepository
+import com.turkcell.lyraapp.data.auth.SessionManager
+import com.turkcell.lyraapp.data.auth.TokenStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -14,18 +16,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-import com.turkcell.lyraapp.data.auth.SessionManager
-
-/**
- * Login ekranının MVI ViewModel'i.
- *
- * Tek giriş noktası [onIntent]'tir. Durum [uiState] üzerinden gözlemlenir; tek seferlik
- * olaylar [effect] kanalından akar.
- */
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val sessionManager: SessionManager,
+    private val tokenStorage: TokenStorage,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
@@ -33,6 +28,18 @@ class LoginViewModel @Inject constructor(
 
     private val _effect = Channel<LoginEffect>(Channel.BUFFERED)
     val effect: Flow<LoginEffect> = _effect.receiveAsFlow()
+
+    init {
+        checkExistingSession()
+    }
+
+    private fun checkExistingSession() {
+        viewModelScope.launch {
+            if (tokenStorage.getRefreshToken() != null) {
+                _effect.send(LoginEffect.NavigateToHome)
+            }
+        }
+    }
 
     fun onIntent(intent: LoginIntent) {
         when (intent) {
@@ -81,9 +88,10 @@ class LoginViewModel @Inject constructor(
 
                 result
                     .onSuccess { session ->
-                        android.util.Log.d("LoginViewModel", "Saving tokens. access: ${session.accessToken}, refresh: ${session.refreshToken}")
                         sessionManager.setAccessToken(session.accessToken)
                         sessionManager.setRefreshToken(session.refreshToken)
+                        tokenStorage.saveAccessToken(session.accessToken)
+                        tokenStorage.saveRefreshToken(session.refreshToken)
                         if (session.firstTime) {
                             _effect.send(LoginEffect.NavigateToProfileComplete)
                         } else {

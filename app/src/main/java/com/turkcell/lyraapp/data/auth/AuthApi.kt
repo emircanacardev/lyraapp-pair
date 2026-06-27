@@ -76,4 +76,7 @@ interface AuthApi {
     suspend fun getPlaylistWithSongs(
         @Path("id") playlistId: String
     ): PlaylistWithSongsEnvelope
+
+    @POST("api/v1/me/playback/next")
+    suspend fun playbackNext(@Body request: PlaybackNextRequest): PlaybackNextResponseEnvelope
 }

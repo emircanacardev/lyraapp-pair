@@ -197,3 +197,24 @@ data class PlaylistWithSongsEnvelope(
     val data: PlaylistWithSongsDto
 )
 
+@Serializable
+data class PlaybackNextRequest(val songId: String)
+
+@Serializable
+data class PlaybackNextResponseEnvelope(val data: PlaybackNextDto)
+
+@Serializable
+data class PlaybackNextDto(
+    val type: String,
+    val stream: PlaybackStreamLink,
+    val adStream: PlaybackStreamLink? = null,
+    val impressionId: String? = null,
+)
+
+@Serializable
+data class PlaybackStreamLink(
+    val url: String,
+    val expiresAt: String? = null,
+    val mimeType: String? = null,
+)
+

@@ -11,6 +11,8 @@ data class PlaylistDetailUiState(
     val isLiked: Boolean = false,
     val isLikedSongs: Boolean = false,
     val songs: List<SongItem> = emptyList(),
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
 )
 
 data class SongItem(
@@ -30,7 +32,7 @@ sealed interface PlaylistDetailIntent {
     data object ShuffleClicked : PlaylistDetailIntent
     data class LikeSongClicked(val songId: String) : PlaylistDetailIntent
     data class SongClicked(val songId: String) : PlaylistDetailIntent
-    data class MoreSongClicked(val songId: String) : PlaylistDetailIntent
+    data class RemoveSong(val songId: String) : PlaylistDetailIntent
 }
 
 sealed interface PlaylistDetailEffect {

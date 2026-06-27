@@ -158,19 +158,18 @@ fun HomeScreen(
                     )
                 }
 
-                if (state.playlists.isNotEmpty()) {
-                    item { SectionHeader(title = "Çalma Listelerim") }
+                if (state.recommendations.isNotEmpty()) {
                     item {
-                        PlaylistsRow(
-                            playlists = state.playlists,
-                            onPlaylistClick = { id -> onIntent(HomeIntent.PlaylistSelected(id)) },
+                        RecommendationsGrid(
+                            recommendations = state.recommendations,
+                            onItemClick = { song -> onIntent(HomeIntent.RecommendationSelected(song)) },
                         )
                     }
                 }
 
                 item {
                     SectionHeader(
-                        title = "Son Çalınanlar",
+                        title = "Son çalınanlar",
                         trailingText = if (state.recentlyPlayed.isNotEmpty()) "Tümü" else null,
                         onTrailingClick = if (state.recentlyPlayed.isNotEmpty()) {
                             { onIntent(HomeIntent.ShowAllRecentlyPlayed) }
@@ -185,7 +184,7 @@ fun HomeScreen(
                 }
 
                 if (state.forYouSongs.isNotEmpty()) {
-                    item { SectionHeader(title = "Senin İçin") }
+                    item { SectionHeader(title = "Senin için seçilenler") }
                     item {
                         ForYouSongsRow(
                             items = state.forYouSongs,
@@ -194,12 +193,12 @@ fun HomeScreen(
                     }
                 }
 
-                if (state.recommendations.isNotEmpty()) {
-                    item { SectionHeader(title = "Öneriler") }
+                if (state.playlists.isNotEmpty()) {
+                    item { SectionHeader(title = "Çalma listelerim") }
                     item {
-                        RecommendationsGrid(
-                            recommendations = state.recommendations,
-                            onItemClick = { song -> onIntent(HomeIntent.RecommendationSelected(song)) },
+                        PlaylistsRow(
+                            playlists = state.playlists,
+                            onPlaylistClick = { id -> onIntent(HomeIntent.PlaylistSelected(id)) },
                         )
                     }
                 }

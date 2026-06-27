@@ -18,6 +18,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -25,26 +28,36 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.turkcell.lyraapp.ui.icons.LyraIcons
-import com.turkcell.lyraapp.ui.theme.LyraAppTheme
 
 @Composable
 fun LibraryRoute(
     onOpenPlaylist: (String) -> Unit,
     onCreatePlaylist: () -> Unit,
+    playlistCreated: Boolean = false,
+    onPlaylistCreatedConsumed: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(playlistCreated) {
+        if (playlistCreated) {
+            viewModel.loadPlaylists()
+            onPlaylistCreatedConsumed()
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.effect.collect { effect ->
@@ -85,26 +98,51 @@ fun LibraryScreen(
         )
         Spacer(modifier = Modifier.height(4.dp))
         LibrarySortRow()
-        if (state.selectedFilter == LibraryFilter.Playlists) {
-            LazyColumn {
-                items(items = state.playlists, key = { it.id }) { playlist ->
-                    PlaylistItemRow(
-                        item = playlist,
-                        onClick = { onIntent(LibraryIntent.PlaylistClicked(playlist.id)) },
-                        onMoreClicked = { onIntent(LibraryIntent.MoreClicked(playlist.id)) },
+
+        when {
+            state.isLoading -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                }
+            }
+            state.errorMessage != null -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = state.errorMessage,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
                     )
                 }
             }
-        } else {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "Henüz ${state.selectedFilter.label.lowercase()} eklenmedi",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            state.selectedFilter == LibraryFilter.Playlists -> {
+                if (state.playlists.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "Henüz çalma listesi eklenmedi",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                } else {
+                    LazyColumn {
+                        items(items = state.playlists, key = { it.id }) { playlist ->
+                            PlaylistItemRow(
+                                item = playlist,
+                                onClick = { onIntent(LibraryIntent.PlaylistClicked(playlist.id)) },
+                                onDeleteClicked = { onIntent(LibraryIntent.DeletePlaylist(playlist.id)) },
+                            )
+                        }
+                    }
+                }
+            }
+            else -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "Henüz ${state.selectedFilter.label.lowercase()} eklenmedi",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }
@@ -243,9 +281,11 @@ private fun LibrarySortRow(
 private fun PlaylistItemRow(
     item: PlaylistItem,
     onClick: () -> Unit,
-    onMoreClicked: () -> Unit,
+    onDeleteClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var menuExpanded by remember { mutableStateOf(false) }
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -265,7 +305,7 @@ private fun PlaylistItemRow(
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = "Çalma listesi · ${item.songCount} şarkı",
+                text = "Çalma listesi",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -278,16 +318,35 @@ private fun PlaylistItemRow(
                 modifier = Modifier.size(20.dp),
             )
         } else {
-            IconButton(
-                onClick = onMoreClicked,
-                modifier = Modifier.size(36.dp),
-            ) {
-                Icon(
-                    imageVector = LyraIcons.MoreVert,
-                    contentDescription = "Daha fazla seçenek",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp),
-                )
+            Box {
+                IconButton(
+                    onClick = { menuExpanded = true },
+                    modifier = Modifier.size(36.dp),
+                ) {
+                    Icon(
+                        imageVector = LyraIcons.MoreVert,
+                        contentDescription = "Daha fazla seçenek",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                ) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = "Sil",
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            onDeleteClicked()
+                        },
+                    )
+                }
             }
         }
     }
@@ -313,25 +372,5 @@ private fun PlaylistThumbnail(
                 modifier = Modifier.size(28.dp),
             )
         }
-    }
-}
-
-@Preview(name = "Library - Dark", showBackground = true, showSystemUi = true)
-@Composable
-private fun LibraryScreenDarkPreview() {
-    LyraAppTheme(darkTheme = true) {
-        LibraryScreen(
-            state = LibraryUiState(
-                playlists = listOf(
-                    PlaylistItem("1", "Beğenilen Şarkılar", 5, isPinned = true,  thumbnailColor = 0xFFE91E8CL, isLikedSongs = true),
-                    PlaylistItem("2", "Gece Sürüşü",        6, isPinned = false, thumbnailColor = 0xFF7B5EA7L),
-                    PlaylistItem("3", "Sabah Kahvesi",       5, isPinned = false, thumbnailColor = 0xFF5B6AE8L),
-                    PlaylistItem("4", "Odaklan",             5, isPinned = false, thumbnailColor = 0xFF26A69AL),
-                    PlaylistItem("5", "Yaz Anıları",         5, isPinned = false, thumbnailColor = 0xFF4DD0E1L),
-                    PlaylistItem("6", "Akustik Akşam",       4, isPinned = false, thumbnailColor = 0xFF00897BL),
-                ),
-            ),
-            onIntent = {},
-        )
     }
 }

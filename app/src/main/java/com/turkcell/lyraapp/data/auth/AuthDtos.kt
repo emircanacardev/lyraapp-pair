@@ -172,3 +172,28 @@ data class RemoveTrackResponseEnvelope(
     val data: RemoveTrackDto
 )
 
+@Serializable
+data class DeletePlaylistDto(
+    val deleted: Boolean
+)
+
+@Serializable
+data class DeletePlaylistResponseEnvelope(
+    val data: DeletePlaylistDto
+)
+
+@Serializable
+data class PlaylistWithSongsDto(
+    val id: String,
+    val name: String,
+    val description: String? = null,
+    val createdAt: String,
+    val ownerId: String? = null,
+    val songs: List<com.turkcell.lyraapp.data.songs.SongDto> = emptyList(),
+)
+
+@Serializable
+data class PlaylistWithSongsEnvelope(
+    val data: PlaylistWithSongsDto
+)
+

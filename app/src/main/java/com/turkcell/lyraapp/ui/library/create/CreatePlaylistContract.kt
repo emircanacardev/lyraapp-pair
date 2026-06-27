@@ -4,10 +4,13 @@ data class CreatePlaylistUiState(
     val name: String = "",
     val description: String = "",
     val isPublic: Boolean = true,
-    val selectedSongIds: Set<String> = emptySet(),
-    val availableSongs: List<SelectableSong> = emptyList(),
     val coverColor: Long = 0xFFB5756CL,
     val isSaveEnabled: Boolean = false,
+    val isLoading: Boolean = false,
+    val isSongsLoading: Boolean = false,
+    val errorMessage: String? = null,
+    val availableSongs: List<SelectableSong> = emptyList(),
+    val selectedSongIds: Set<String> = emptySet(),
 )
 
 data class SelectableSong(
@@ -27,5 +30,5 @@ sealed interface CreatePlaylistIntent {
 }
 
 sealed interface CreatePlaylistEffect {
-    data object NavigateBack : CreatePlaylistEffect
+    data class NavigateBack(val playlistCreated: Boolean) : CreatePlaylistEffect
 }

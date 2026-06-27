@@ -3,6 +3,8 @@ package com.turkcell.lyraapp.ui.library
 data class LibraryUiState(
     val selectedFilter: LibraryFilter = LibraryFilter.Playlists,
     val playlists: List<PlaylistItem> = emptyList(),
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
 )
 
 enum class LibraryFilter(val label: String) {
@@ -23,7 +25,7 @@ data class PlaylistItem(
 sealed interface LibraryIntent {
     data class FilterSelected(val filter: LibraryFilter) : LibraryIntent
     data class PlaylistClicked(val id: String) : LibraryIntent
-    data class MoreClicked(val id: String) : LibraryIntent
+    data class DeletePlaylist(val id: String) : LibraryIntent
     data object SearchClicked : LibraryIntent
     data object AddClicked : LibraryIntent
 }

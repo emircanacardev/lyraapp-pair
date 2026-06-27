@@ -124,6 +124,21 @@ interface AuthRepository {
     suspend fun removeTrackFromPlaylist(playlistId: String, songId: String): Result<Boolean>
 
     /**
+     * Kullanıcının kendi oluşturduğu bir çalma listesini siler.
+     *
+     * @param playlistId Silinecek çalma listesinin id'si.
+     * @return Silme başarılıysa true.
+     */
+    suspend fun deletePlaylist(playlistId: String): Result<Boolean>
+
+    /**
+     * Playlist'i şarkılarıyla birlikte getirir.
+     *
+     * @param playlistId Çalma listesinin id'si.
+     */
+    suspend fun getPlaylistWithSongs(playlistId: String): Result<PlaylistWithSongsDto>
+
+    /**
      * Verilen telefon numarası ve şifreyle giriş dener.
      *
      * @return Başarılıysa [Result.success], aksi halde hata mesajı taşıyan [Result.failure].

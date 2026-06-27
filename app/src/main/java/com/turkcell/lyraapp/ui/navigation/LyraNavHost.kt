@@ -182,10 +182,30 @@ fun LyraNavHost(
                 )
             }
             composable(LyraDestination.Search.route) { SearchRoute() }
-            composable(LyraDestination.Library.route) {
+            composable(LyraDestination.Library.route) { backStackEntry ->
+                val playlistCreated = backStackEntry.savedStateHandle
+                    .getStateFlow("playlist_created", false)
+                    .collectAsStateWithLifecycle()
+
                 LibraryRoute(
                     onOpenPlaylist = { id -> navController.navigate(playlistDetailRoute(id)) },
                     onCreatePlaylist = { navController.navigate(LyraDestination.CreatePlaylist.route) },
+                    playlistCreated = playlistCreated.value,
+                    onPlaylistCreatedConsumed = {
+                        backStackEntry.savedStateHandle["playlist_created"] = false
+                    },
+                )
+            }
+            composable(LyraDestination.CreatePlaylist.route) {
+                CreatePlaylistRoute(
+                    onNavigateBack = { created ->
+                        if (created) {
+                            navController.previousBackStackEntry
+                                ?.savedStateHandle
+                                ?.set("playlist_created", true)
+                        }
+                        navController.popBackStack()
+                    }
                 )
             }
             composable(LyraDestination.Favorites.route) {

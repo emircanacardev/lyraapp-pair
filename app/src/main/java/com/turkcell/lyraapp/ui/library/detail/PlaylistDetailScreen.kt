@@ -18,6 +18,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -25,6 +28,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -76,23 +82,58 @@ fun PlaylistDetailScreen(
         PlaylistDetailTopBar(
             onBackClicked = { onIntent(PlaylistDetailIntent.BackClicked) },
         )
-        LazyColumn {
-            item {
-                if (state.isLikedSongs) {
-                    LikedSongsHeader(state = state, onIntent = onIntent)
-                } else {
-                    PlaylistHeader(state = state, onIntent = onIntent)
+        when {
+            state.isLoading -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 }
             }
-            items(items = state.songs, key = { it.id }) { song ->
-                SongItemRow(
-                    song = song,
-                    onClick = { onIntent(PlaylistDetailIntent.SongClicked(song.id)) },
-                    onLikeClicked = { onIntent(PlaylistDetailIntent.LikeSongClicked(song.id)) },
-                    onMoreClicked = { onIntent(PlaylistDetailIntent.MoreSongClicked(song.id)) },
-                )
+            state.errorMessage != null -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = state.errorMessage,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             }
-            item { Spacer(modifier = Modifier.height(24.dp)) }
+            else -> {
+                LazyColumn {
+                    item {
+                        if (state.isLikedSongs) {
+                            LikedSongsHeader(state = state, onIntent = onIntent)
+                        } else {
+                            PlaylistHeader(state = state, onIntent = onIntent)
+                        }
+                    }
+                    if (state.songs.isEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 48.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = "Henüz şarkı eklenmedi",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    } else {
+                        items(items = state.songs, key = { it.id }) { song ->
+                            SongItemRow(
+                                song = song,
+                                onClick = { onIntent(PlaylistDetailIntent.SongClicked(song.id)) },
+                                onLikeClicked = { onIntent(PlaylistDetailIntent.LikeSongClicked(song.id)) },
+                                onRemoveClicked = { onIntent(PlaylistDetailIntent.RemoveSong(song.id)) },
+                            )
+                        }
+                    }
+                    item { Spacer(modifier = Modifier.height(24.dp)) }
+                }
+            }
         }
     }
 }
@@ -354,9 +395,11 @@ private fun SongItemRow(
     song: SongItem,
     onClick: () -> Unit,
     onLikeClicked: () -> Unit,
-    onMoreClicked: () -> Unit,
+    onRemoveClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var menuExpanded by remember { mutableStateOf(false) }
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -416,16 +459,35 @@ private fun SongItemRow(
                 modifier = Modifier.size(18.dp),
             )
         }
-        IconButton(
-            onClick = onMoreClicked,
-            modifier = Modifier.size(36.dp),
-        ) {
-            Icon(
-                imageVector = LyraIcons.MoreVert,
-                contentDescription = "Daha fazla",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp),
-            )
+        Box {
+            IconButton(
+                onClick = { menuExpanded = true },
+                modifier = Modifier.size(36.dp),
+            ) {
+                Icon(
+                    imageVector = LyraIcons.MoreVert,
+                    contentDescription = "Daha fazla",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+            DropdownMenu(
+                expanded = menuExpanded,
+                onDismissRequest = { menuExpanded = false },
+            ) {
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = "Listeden kaldır",
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    },
+                    onClick = {
+                        menuExpanded = false
+                        onRemoveClicked()
+                    },
+                )
+            }
         }
     }
 }

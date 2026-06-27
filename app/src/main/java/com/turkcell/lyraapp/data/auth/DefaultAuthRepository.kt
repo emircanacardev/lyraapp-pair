@@ -67,6 +67,14 @@ class DefaultAuthRepository @Inject constructor(
         authApi.removeTrackFromPlaylist(playlistId, songId).data.removed
     }
 
+    override suspend fun deletePlaylist(playlistId: String): Result<Boolean> = runCatching {
+        authApi.deletePlaylist(playlistId).data.deleted
+    }
+
+    override suspend fun getPlaylistWithSongs(playlistId: String): Result<PlaylistWithSongsDto> = runCatching {
+        authApi.getPlaylistWithSongs(playlistId).data
+    }
+
     @Deprecated("Yeni OTP tabanlı giriş akışına geçildiğinden bu metot kullanımdan kaldırılmıştır.")
     override suspend fun login(phoneNumber: String, password: String): Result<Unit> {
         return Result.failure(UnsupportedOperationException("Geleneksel login metodu artık desteklenmemektedir. OTP akışını kullanın."))

@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,16 +37,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.turkcell.lyraapp.ui.icons.LyraIcons
-import com.turkcell.lyraapp.ui.theme.LyraAppTheme
 
 @Composable
 fun CreatePlaylistRoute(
-    onNavigateBack: () -> Unit,
+    onNavigateBack: (created: Boolean) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: CreatePlaylistViewModel = hiltViewModel(),
 ) {
@@ -54,7 +53,7 @@ fun CreatePlaylistRoute(
     LaunchedEffect(Unit) {
         viewModel.effect.collect { effect ->
             when (effect) {
-                CreatePlaylistEffect.NavigateBack -> onNavigateBack()
+                is CreatePlaylistEffect.NavigateBack -> onNavigateBack(effect.playlistCreated)
             }
         }
     }
@@ -79,23 +78,48 @@ fun CreatePlaylistScreen(
             .statusBarsPadding(),
     ) {
         CreatePlaylistTopBar(
-            isSaveEnabled = state.isSaveEnabled,
+            isSaveEnabled = state.isSaveEnabled && !state.isLoading,
+            isLoading = state.isLoading,
             onCloseClicked = { onIntent(CreatePlaylistIntent.CloseClicked) },
             onSaveClicked = { onIntent(CreatePlaylistIntent.SaveClicked) },
         )
-        LazyColumn {
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
             item {
                 CoverAndFields(state = state, onIntent = onIntent)
                 PrivacyRow(isPublic = state.isPublic, onToggle = { onIntent(CreatePlaylistIntent.TogglePublic) })
+                if (state.errorMessage != null) {
+                    Text(
+                        text = state.errorMessage,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    )
+                }
                 SongSectionHeader(selectedCount = state.selectedSongIds.size)
             }
-            items(items = state.availableSongs, key = { it.id }) { song ->
-                val isSelected = song.id in state.selectedSongIds
-                SelectableSongRow(
-                    song = song,
-                    isSelected = isSelected,
-                    onClick = { onIntent(CreatePlaylistIntent.ToggleSong(song.id)) },
-                )
+            if (state.isSongsLoading) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 32.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(28.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    }
+                }
+            } else {
+                items(items = state.availableSongs, key = { it.id }) { song ->
+                    SelectableSongRow(
+                        song = song,
+                        isSelected = song.id in state.selectedSongIds,
+                        onClick = { onIntent(CreatePlaylistIntent.ToggleSong(song.id)) },
+                    )
+                }
             }
             item { Spacer(modifier = Modifier.height(24.dp)) }
         }
@@ -105,6 +129,7 @@ fun CreatePlaylistScreen(
 @Composable
 private fun CreatePlaylistTopBar(
     isSaveEnabled: Boolean,
+    isLoading: Boolean,
     onCloseClicked: () -> Unit,
     onSaveClicked: () -> Unit,
     modifier: Modifier = Modifier,
@@ -115,7 +140,7 @@ private fun CreatePlaylistTopBar(
             .padding(horizontal = 4.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = onCloseClicked) {
+        IconButton(onClick = onCloseClicked, enabled = !isLoading) {
             Icon(
                 imageVector = LyraIcons.Close,
                 contentDescription = "Kapat",
@@ -129,15 +154,25 @@ private fun CreatePlaylistTopBar(
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f),
         )
-        TextButton(
-            onClick = onSaveClicked,
-            enabled = isSaveEnabled,
-        ) {
-            Text(
-                text = "Kaydet",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier
+                    .size(36.dp)
+                    .padding(end = 8.dp),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.primary,
             )
+        } else {
+            TextButton(
+                onClick = onSaveClicked,
+                enabled = isSaveEnabled,
+            ) {
+                Text(
+                    text = "Kaydet",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
         }
     }
 }
@@ -354,25 +389,5 @@ private fun SelectableSongRow(
                 )
             }
         }
-    }
-}
-
-@Preview(name = "CreatePlaylist - Dark", showBackground = true, showSystemUi = true)
-@Composable
-private fun CreatePlaylistScreenDarkPreview() {
-    LyraAppTheme(darkTheme = true) {
-        CreatePlaylistScreen(
-            state = CreatePlaylistUiState(
-                name = "",
-                isPublic = true,
-                selectedSongIds = setOf("cs1", "cs3"),
-                availableSongs = listOf(
-                    SelectableSong("cs1", "Gece Yarısı",  "Mavi Deniz", 0xFF2E8B57L),
-                    SelectableSong("cs2", "Sessiz Şehir", "Ela Tuna",   0xFF8B5CF6L),
-                    SelectableSong("cs3", "Yıldız Tozu",  "Polaris",    0xFF0EA5E9L),
-                ),
-            ),
-            onIntent = {},
-        )
     }
 }

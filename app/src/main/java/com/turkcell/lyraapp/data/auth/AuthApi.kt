@@ -66,4 +66,14 @@ interface AuthApi {
         @Path("id") playlistId: String,
         @Path("songId") songId: String
     ): RemoveTrackResponseEnvelope
+
+    @DELETE("api/v1/me/playlists/{id}")
+    suspend fun deletePlaylist(
+        @Path("id") playlistId: String
+    ): DeletePlaylistResponseEnvelope
+
+    @GET("api/v1/playlists/{id}")
+    suspend fun getPlaylistWithSongs(
+        @Path("id") playlistId: String
+    ): PlaylistWithSongsEnvelope
 }

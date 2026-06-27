@@ -145,6 +145,23 @@ class FakeAuthRepository @Inject constructor() : AuthRepository {
         return Result.success(true)
     }
 
+    override suspend fun deletePlaylist(playlistId: String): Result<Boolean> {
+        delay(NETWORK_DELAY_MS)
+        return Result.success(true)
+    }
+
+    override suspend fun getPlaylistWithSongs(playlistId: String): Result<PlaylistWithSongsDto> {
+        delay(NETWORK_DELAY_MS)
+        return Result.success(
+            PlaylistWithSongsDto(
+                id = playlistId,
+                name = "Çalma Listesi",
+                createdAt = "2026-06-23T20:00:00Z",
+                songs = emptyList(),
+            )
+        )
+    }
+
     @Deprecated("Yeni OTP tabanlı giriş akışına geçildiğinden bu metot kullanımdan kaldırılmıştır.")
     override suspend fun login(phoneNumber: String, password: String): Result<Unit> {
         delay(NETWORK_DELAY_MS)

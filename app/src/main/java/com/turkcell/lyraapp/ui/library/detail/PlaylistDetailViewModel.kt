@@ -3,6 +3,9 @@ package com.turkcell.lyraapp.ui.library.detail
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.turkcell.lyraapp.data.auth.AuthRepository
+import com.turkcell.lyraapp.data.auth.PlaylistWithSongsDto
+import com.turkcell.lyraapp.data.songs.SongDto
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -17,25 +20,53 @@ import javax.inject.Inject
 @HiltViewModel
 class PlaylistDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
 
     private val playlistId: String = checkNotNull(savedStateHandle["playlistId"])
 
-    private val _uiState = MutableStateFlow(staticDetail(playlistId))
+    private val _uiState = MutableStateFlow(PlaylistDetailUiState(playlistId = playlistId))
     val uiState: StateFlow<PlaylistDetailUiState> = _uiState.asStateFlow()
 
     private val _effect = Channel<PlaylistDetailEffect>(Channel.BUFFERED)
     val effect: Flow<PlaylistDetailEffect> = _effect.receiveAsFlow()
+
+    init {
+        if (playlistId == "liked_songs") {
+            _uiState.update {
+                it.copy(
+                    title = "Beğenilen Şarkılar",
+                    coverColor = 0xFFE91E8CL,
+                    isLikedSongs = true,
+                )
+            }
+        } else {
+            loadPlaylist()
+        }
+    }
 
     fun onIntent(intent: PlaylistDetailIntent) {
         when (intent) {
             is PlaylistDetailIntent.BackClicked -> viewModelScope.launch { _effect.send(PlaylistDetailEffect.NavigateBack) }
             is PlaylistDetailIntent.LikePlaylistClicked -> _uiState.update { it.copy(isLiked = !it.isLiked) }
             is PlaylistDetailIntent.LikeSongClicked -> toggleSongLike(intent.songId)
+            is PlaylistDetailIntent.RemoveSong -> removeSong(intent.songId)
             is PlaylistDetailIntent.PlayClicked -> Unit
             is PlaylistDetailIntent.ShuffleClicked -> Unit
             is PlaylistDetailIntent.SongClicked -> Unit
-            is PlaylistDetailIntent.MoreSongClicked -> Unit
+        }
+    }
+
+    private fun loadPlaylist() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            authRepository.getPlaylistWithSongs(playlistId)
+                .onSuccess { dto ->
+                    _uiState.update { it.copy(isLoading = false).fromDto(dto) }
+                }
+                .onFailure { error ->
+                    _uiState.update { it.copy(isLoading = false, errorMessage = error.message) }
+                }
         }
     }
 
@@ -48,40 +79,45 @@ class PlaylistDetailViewModel @Inject constructor(
             )
         }
     }
+
+    private fun removeSong(songId: String) {
+        viewModelScope.launch {
+            authRepository.removeTrackFromPlaylist(playlistId, songId)
+                .onSuccess {
+                    _uiState.update { state ->
+                        val updated = state.songs.filter { it.id != songId }
+                        state.copy(songs = updated, songCount = updated.size)
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update { it.copy(errorMessage = error.message) }
+                }
+        }
+    }
 }
 
-private fun staticDetail(playlistId: String): PlaylistDetailUiState = when (playlistId) {
-    "1" -> PlaylistDetailUiState(
-        playlistId = "1",
-        title = "Beğenilen Şarkılar",
-        songCount = 5,
-        totalDuration = "19 dk",
-        coverColor = 0xFFE91E8CL,
-        isLikedSongs = true,
-        songs = listOf(
-            SongItem("ls1", "Gece Yarısı",   "Mavi Deniz",     "3:34", 0xFF2E8B57L, isLiked = true),
-            SongItem("ls2", "Yıldız Tozu",   "Polaris",        "4:07", 0xFF0EA5E9L, isLiked = true),
-            SongItem("ls3", "İlk Işık",      "Sabah Ezgisi",   "3:25", 0xFF10B981L, isLiked = true),
-            SongItem("ls4", "Neon Sokaklar", "Şehir Işıkları", "3:43", 0xFF8B4513L, isLiked = true, isPlaying = true),
-            SongItem("ls5", "Derin Mavi",    "Okyanus",        "4:29", 0xFF1A5C3AL, isLiked = true),
-        ),
+private val songColors = listOf(
+    0xFF7B5EA7L, 0xFF5B6AE8L, 0xFF26A69AL, 0xFF4DD0E1L, 0xFF00897BL,
+    0xFFE57373L, 0xFF8B4513L, 0xFF2E8B57L, 0xFF0EA5E9L, 0xFF8B5CF6L,
+)
+
+private fun PlaylistDetailUiState.fromDto(dto: PlaylistWithSongsDto): PlaylistDetailUiState {
+    val totalMs = dto.songs.sumOf { 0L }
+    val totalMin = totalMs / 60000
+    return copy(
+        title = dto.name,
+        description = dto.description ?: "",
+        songCount = dto.songs.size,
+        totalDuration = if (totalMin > 0) "$totalMin dk" else "",
+        songs = dto.songs.mapIndexed { index, song -> song.toSongItem(index) },
     )
-    "2" -> PlaylistDetailUiState(
-        playlistId = "2",
-        title = "Gece Sürüşü",
-        description = "Karanlık yollar için synth-pop",
-        ownerName = "Zeynep Kaya",
-        songCount = 5,
-        totalDuration = "23 dk",
-        coverColor = 0xFF7B5EA7L,
-        isLiked = false,
-        songs = listOf(
-            SongItem("s1", "Neon Sokaklar", "Şehir Işıkları", "3:43", 0xFF8B4513L, isLiked = true,  isPlaying = true),
-            SongItem("s2", "Gece Yarısı",   "Mavi Deniz",    "3:34", 0xFF2E8B57L, isLiked = true,  isPlaying = false),
-            SongItem("s3", "Mor Bulutlar",  "Derin Kaya",    "3:52", 0xFF8B5CF6L, isLiked = false, isPlaying = false),
-            SongItem("s4", "Son Tren",      "Peron",         "3:37", 0xFF14B8A6L, isLiked = false, isPlaying = false),
-            SongItem("s5", "Yıldız Tozu",   "Polaris",       "4:07", 0xFF0EA5E9L, isLiked = false, isPlaying = false),
-        ),
-    )
-    else -> PlaylistDetailUiState(playlistId = playlistId, title = "Çalma Listesi")
 }
+
+private fun SongDto.toSongItem(index: Int): SongItem = SongItem(
+    id = id,
+    title = title,
+    artistName = artist,
+    duration = "",
+    thumbnailColor = songColors[index % songColors.size],
+    isLiked = false,
+)

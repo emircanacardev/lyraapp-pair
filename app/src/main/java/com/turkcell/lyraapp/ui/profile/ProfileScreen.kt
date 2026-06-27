@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,6 +30,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -58,6 +60,7 @@ import com.turkcell.lyraapp.ui.theme.LyraAppTheme
 @Composable
 fun ProfileRoute(
     onNavigateToLogin: () -> Unit,
+    onNavigateToPremium: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
@@ -70,9 +73,8 @@ fun ProfileRoute(
                 is ProfileEffect.ShowSettingsMessage -> {
                     snackbarHostState.showSnackbar("Bu ayar henüz değiştirilemez.")
                 }
-                is ProfileEffect.NavigateToLogin -> {
-                    onNavigateToLogin()
-                }
+                is ProfileEffect.NavigateToLogin -> onNavigateToLogin()
+                is ProfileEffect.NavigateToPremium -> onNavigateToPremium()
             }
         }
     }
@@ -187,7 +189,7 @@ fun ProfileScreen(
 
                         // Handle ve Premium Durumu
                         Text(
-                            text = "${state.handle} · ${state.status}",
+                            text = "${state.handle} · ${if (state.hasPremium) "Premium · ${state.premiumDaysLeft} gün" else "Ücretsiz"}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -205,6 +207,15 @@ fun ProfileScreen(
                         StatItem(count = state.followersCount, label = "Takipçi")
                         StatItem(count = state.followingCount.toString(), label = "Takip")
                     }
+                }
+
+                // Premium Kart
+                item {
+                    PremiumCard(
+                        hasPremium = state.hasPremium,
+                        daysLeft = state.premiumDaysLeft,
+                        onClick = { onIntent(ProfileIntent.PremiumCardClicked) },
+                    )
                 }
 
                 // Görünüm (Tema Seçimi) Bölümü
@@ -275,6 +286,141 @@ fun ProfileScreen(
             }
         }
     }
+
+    if (state.showRenewalDialog) {
+        RenewalReminderDialog(
+            daysLeft = state.premiumDaysLeft,
+            onDismiss = { onIntent(ProfileIntent.RenewalDialogDismissed) },
+            onSubscribe = { onIntent(ProfileIntent.RenewWithSubscriptionClicked) },
+            onOneTime = { onIntent(ProfileIntent.RenewOneTimeClicked) },
+        )
+    }
+}
+
+@Composable
+private fun PremiumCard(
+    hasPremium: Boolean,
+    daysLeft: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val cardBg = Brush.linearGradient(listOf(Color(0xFF7B2949), Color(0xFF633F1F)))
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(cardBg)
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.18f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = ProfileIcons.Star,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+            Spacer(Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (hasPremium) "Premium · $daysLeft gün kaldı" else "Premium'a geç",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                )
+                Text(
+                    text = if (hasPremium) "Yenile ya da aboneliğe geç" else "Reklamsız, sınırsız müzik",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.75f),
+                )
+            }
+            Icon(
+                imageVector = ProfileIcons.ChevronRight,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.7f),
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun RenewalReminderDialog(
+    daysLeft: Int,
+    onDismiss: () -> Unit,
+    onSubscribe: () -> Unit,
+    onOneTime: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        icon = {
+            Icon(
+                imageVector = ProfileIcons.Clock,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(32.dp),
+            )
+        },
+        title = {
+            Text(
+                text = "Premium'un $daysLeft gün sonra bitiyor",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            )
+        },
+        text = {
+            Text(
+                text = "Tek seferlik erişimin sona ermek üzere. Kesintisiz dinlemeye devam etmek için yenile ya da aylık aboneliğe geç.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        },
+        confirmButton = {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                androidx.compose.material3.Button(
+                    onClick = onSubscribe,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                ) {
+                    Icon(imageVector = ProfileIcons.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(text = "Aylık aboneliğe geç · ₺59,99", fontWeight = FontWeight.SemiBold)
+                }
+                androidx.compose.material3.OutlinedButton(
+                    onClick = onOneTime,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                ) {
+                    Icon(imageVector = ProfileIcons.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(text = "30 gün yenile · ₺79,99", fontWeight = FontWeight.SemiBold)
+                }
+                TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
+                    Text(text = "Daha sonra", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        },
+        dismissButton = null,
+        modifier = modifier,
+    )
 }
 
 @Composable
@@ -519,6 +665,27 @@ private object ProfileIcons {
         lyraIcon(
             "Logout",
             "M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"
+        )
+    }
+
+    val Star: ImageVector by lazy {
+        lyraIcon(
+            "Star",
+            "M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+        )
+    }
+
+    val Clock: ImageVector by lazy {
+        lyraIcon(
+            "Clock",
+            "M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"
+        )
+    }
+
+    val Refresh: ImageVector by lazy {
+        lyraIcon(
+            "Refresh",
+            "M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"
         )
     }
 

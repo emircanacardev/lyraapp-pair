@@ -1,6 +1,7 @@
 package com.turkcell.lyraapp.data.network
 
 import com.turkcell.lyraapp.data.auth.AuthApi
+import com.turkcell.lyraapp.data.membership.MembershipApi
 import com.turkcell.lyraapp.data.songs.SongsApi
 import dagger.Module
 import dagger.Provides
@@ -59,4 +60,8 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideAuthApi(retrofit: Retrofit): AuthApi = retrofit.create(AuthApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideMembershipApi(retrofit: Retrofit): MembershipApi = retrofit.create(MembershipApi::class.java)
 }

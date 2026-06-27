@@ -1,5 +1,6 @@
 package com.turkcell.lyraapp.data.auth
 
+import com.turkcell.lyraapp.data.membership.MembershipDto
 import com.turkcell.lyraapp.data.songs.SongDto
 import kotlinx.serialization.Serializable
 
@@ -49,7 +50,8 @@ data class UserDto(
     val lastName: String? = null,
     val birthDate: String? = null,
     val createdAt: String,
-    val profileCompleted: Boolean
+    val profileCompleted: Boolean,
+    val membership: MembershipDto? = null,
 )
 
 @Serializable

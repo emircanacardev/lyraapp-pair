@@ -57,6 +57,9 @@ import com.turkcell.lyraapp.ui.library.LibraryRoute
 import com.turkcell.lyraapp.ui.library.create.CreatePlaylistRoute
 import com.turkcell.lyraapp.ui.library.detail.PlaylistDetailRoute
 import com.turkcell.lyraapp.ui.player.PlayerRoute
+import com.turkcell.lyraapp.ui.premium.payment.PaymentRoute
+import com.turkcell.lyraapp.ui.premium.plan.PremiumRoute
+import com.turkcell.lyraapp.ui.premium.success.PaymentSuccessRoute
 import com.turkcell.lyraapp.ui.profile.ProfileRoute
 import com.turkcell.lyraapp.ui.recentlyplayed.RecentlyPlayedRoute
 import com.turkcell.lyraapp.ui.search.SearchRoute
@@ -218,7 +221,51 @@ fun LyraNavHost(
                             popUpTo(0) { inclusive = true }
                             launchSingleTop = true
                         }
-                    }
+                    },
+                    onNavigateToPremium = {
+                        navController.navigate(LyraDestination.Premium.route)
+                    },
+                )
+            }
+            composable(LyraDestination.Premium.route) {
+                PremiumRoute(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToPayment = { planId, planType, planName, planPrice ->
+                        navController.navigate(paymentRoute(planId, planType, planName, planPrice))
+                    },
+                )
+            }
+            composable(
+                route = LyraDestination.Payment.route,
+                arguments = listOf(
+                    navArgument("planId") { type = NavType.StringType; defaultValue = "" },
+                    navArgument("planType") { type = NavType.StringType; defaultValue = "recurring" },
+                    navArgument("planName") { type = NavType.StringType; defaultValue = "" },
+                    navArgument("planPrice") { type = NavType.IntType; defaultValue = 0 },
+                ),
+            ) {
+                PaymentRoute(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToSuccess = { planType ->
+                        navController.navigate(paymentSuccessRoute(planType)) {
+                            popUpTo(LyraDestination.Premium.route) { inclusive = true }
+                        }
+                    },
+                )
+            }
+            composable(
+                route = LyraDestination.PaymentSuccess.route,
+                arguments = listOf(
+                    navArgument("planType") { type = NavType.StringType; defaultValue = "recurring" },
+                ),
+            ) {
+                PaymentSuccessRoute(
+                    onNavigateToHome = {
+                        navController.navigate(LyraDestination.Home.route) {
+                            popUpTo(LyraDestination.Home.route) { inclusive = false }
+                            launchSingleTop = true
+                        }
+                    },
                 )
             }
             composable(

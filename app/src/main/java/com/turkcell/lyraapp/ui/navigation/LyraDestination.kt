@@ -19,6 +19,16 @@ enum class LyraDestination(val route: String) {
     CreatePlaylist("library/create"),
     Player("player?songId={songId}&title={title}&artist={artist}&startColor={startColor}&endColor={endColor}"),
     AllRecentlyPlayed("recently-played"),
+    Premium("premium"),
+    Payment("premium/payment?planId={planId}&planType={planType}&planName={planName}&planPrice={planPrice}"),
+    PaymentSuccess("premium/success?planType={planType}"),
 }
+
+fun paymentRoute(planId: String, planType: String, planName: String, planPrice: Int) =
+    "premium/payment?planId=$planId&planType=$planType&planName=${planName.encodeForRoute()}&planPrice=$planPrice"
+
+private fun String.encodeForRoute() = java.net.URLEncoder.encode(this, "UTF-8")
+
+fun paymentSuccessRoute(planType: String) = "premium/success?planType=$planType"
 
 fun playlistDetailRoute(playlistId: String) = "library/detail/$playlistId"

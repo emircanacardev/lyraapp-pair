@@ -66,4 +66,7 @@ interface AuthApi {
         @Path("id") playlistId: String,
         @Path("songId") songId: String
     ): RemoveTrackResponseEnvelope
+
+    @POST("api/v1/me/playback/next")
+    suspend fun playbackNext(@Body request: PlaybackNextRequest): PlaybackNextResponseEnvelope
 }
